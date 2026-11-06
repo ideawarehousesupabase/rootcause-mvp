@@ -1,0 +1,95 @@
+rules_version = '2';
+
+// RootCause Careers — Firestore-only accounts, no Firebase Authentication.
+//
+// Requests carry no verified identity, so these rules cannot restrict a record to its owner.
+// Instead they:
+//   * block listing/browsing of every top-level collection, so a record can only be reached by
+//     its exact id (login records by email hash, users and institutions by random ids);
+//   * never allow a login record to be overwritten, and tie each one to its user record;
+//   * keep identity fields (uid, email, account type, institution, owner) unchangeable;
+//   * validate the shape of what is written, and allow only the app's own collections.
+// Anyone who knows a user's email address can still reach that user's records.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function userPath(uid) { return /databases/$(database)/documents/users/$(uid); }
+    function userAfter(uid) { return getAfter(userPath(uid)).data; }
+    function institutionPath(id) { return /databases/$(database)/documents/institutions/$(id); }
+    function institutionAfter(id) { return getAfter(institutionPath(id)).data; }
+    function unchanged(field) { return request.resource.data[field] == resource.data[field]; }
+
+    // Login records: accounts/{sha256(email)} → { uid, email, passwordHash, salt, iterations, algorithm, createdAt }
+    match /accounts/{key} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.resource.data.keys().hasOnly(['uid', 'email', 'passwordHash', 'salt', 'iterations', 'algorithm', 'createdAt'])
+        && request.resource.data.passwordHash is string && request.resource.data.passwordHash.size() == 64
+        && request.resource.data.salt is string && request.resource.data.salt.size() == 32
+        && request.resource.data.iterations is int && request.resource.data.iterations >= 100000
+        && request.resource.data.uid is string
+        && existsAfter(userPath(request.resource.data.uid))
+        && userAfter(request.resource.data.uid).email == request.resource.data.email;
+      allow update: if false; // a login record can never be overwritten
+      // Removed only as part of deleting the account, once its user record is gone.
+      allow delete: if !exists(userPath(resource.data.uid));
+    }
+
+    match /users/{uid} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.resource.data.uid == uid
+        && request.resource.data.email is string
+        && request.resource.data.fullName is string
+        && request.resource.data.accountType in ['candidate', 'institutional']
+        && (request.resource.data.accountType == 'candidate'
+            ? request.resource.data.institutionId == null
+            : institutionAfter(request.resource.data.institutionId).ownerUid == uid);
+      allow update: if unchanged('uid') && unchanged('email') && unchanged('accountType') && unchanged('institutionId');
+      allow delete: if true;
+
+      // The user's data, only in the app's own collections and only while the user record exists.
+      match /{sub}/{docId} {
+        allow read, write: if sub in ['cvVersions', 'applications', 'diagnoses', 'actions', 'evaluations', 'engineState',
+                                       'recommendations', 'roadmap', 'progressSnapshots']
+          && exists(userPath(uid));
+      }
+    }
+
+    match /institutions/{instId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.resource.data.ownerUid is string
+        && request.resource.data.name is string
+        && request.resource.data.joinCode is string
+        && userAfter(request.resource.data.ownerUid).accountType == 'institutional'
+        && userAfter(request.resource.data.ownerUid).institutionId == instId;
+      allow update: if unchanged('ownerUid');
+      allow delete: if true;
+
+      // A candidate's consented summary, accepted only while that candidate's own record names this institution.
+      match /members/{candidateUid} {
+        allow read, delete: if true;
+        allow create, update: if exists(institutionPath(instId))
+          && userAfter(candidateUid).sharing != null
+          && userAfter(candidateUid).sharing.institutionId == instId
+          && request.resource.data.candidateUid == candidateUid;
+      }
+    }
+
+    // Join codes: looked up one at a time; each must be its institution's current code.
+    match /joinCodes/{code} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.resource.data.institutionId is string
+        && institutionAfter(request.resource.data.institutionId).joinCode == code;
+      allow update: if unchanged('institutionId');
+      allow delete: if true;
+    }
+
+    // Anything else: no access.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
