@@ -46,6 +46,16 @@ describe("CV file extraction", () => {
     expect(pdfItemsToText(items)).toBe("EXPERIENCE\n- Built a model\nSKILLS");
   });
 
+  it("separates text runs on one line that are far apart, such as right-aligned dates", () => {
+    const items = [
+      { str: "Software Intern", transform: [10, 0, 0, 10, 50, 600], width: 80 },
+      { str: "Jun 2024 – Aug 2024", transform: [10, 0, 0, 10, 450, 600], width: 90 },
+      { str: "Acme", transform: [10, 0, 0, 10, 50, 585], width: 25 },
+      { str: "Ltd", transform: [10, 0, 0, 10, 78, 585], width: 15 },
+    ];
+    expect(pdfItemsToText(items)).toBe("Software Intern | Jun 2024 – Aug 2024\nAcme Ltd");
+  });
+
   it("explains unsupported files", async () => {
     await expect(extractCvText(new File(["x"], "cv.doc"))).rejects.toThrow(/\.docx/);
   });

@@ -28,18 +28,31 @@ interface PdfTextItem {
   str: string;
   hasEOL?: boolean;
   transform?: number[];
+  width?: number;
 }
 
-/** Join PDF text runs into lines, starting a new line on an end-of-line flag or a change of baseline. */
+/**
+ * Join PDF text runs into lines, starting a new line on an end-of-line flag or a change of baseline.
+ * Runs on one line with a wide gap between them (such as dates set at the right margin) are joined with " | ".
+ */
 export function pdfItemsToText(items: PdfTextItem[]) {
   let out = "";
   let lastY: number | null = null;
+  let lastEnd: number | null = null;
   for (const item of items) {
     const y = item.transform?.[5] ?? null;
+    const x = item.transform?.[4] ?? null;
     if (lastY !== null && y !== null && Math.abs(y - lastY) > 2 && !out.endsWith("\n")) out += "\n";
+    else if (lastEnd !== null && x !== null && !out.endsWith("\n") && item.str.trim()) {
+      const size = Math.abs(item.transform?.[0] ?? 10) || 10;
+      const gap = x - lastEnd;
+      if (gap > size * 2) out += " | ";
+      else if (gap > size * 0.15 && !/\s$/.test(out)) out += " ";
+    }
     out += item.str;
     if (item.hasEOL) out += "\n";
     if (y !== null) lastY = y;
+    lastEnd = x !== null && item.width !== undefined ? x + item.width : null;
   }
   return out
     .split("\n")
