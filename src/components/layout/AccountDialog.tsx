@@ -250,7 +250,7 @@ export function AccountDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-3">
               <p className="text-sm font-medium text-red-900">
                 This deletes your account
-                {institutional ? ", your institution, its join code and all shared summaries" : " and every CV file, application, diagnosis, action and roadmap step"}. It
+                {institutional ? ", your institution, its join code and all shared summaries" : " and every CV, application, diagnosis and action"}. It
                 cannot be undone.
               </p>
               <PasswordInput placeholder="Confirm your password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />

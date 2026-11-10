@@ -11,9 +11,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: { firebase: ["firebase/app", "firebase/firestore"], charts: ["recharts"] },
+        manualChunks: { firebase: ["firebase/app", "firebase/firestore", "firebase/functions"], charts: ["recharts"] },
       },
     },
   },
-  test: { environment: "node", include: ["src/**/*.test.ts"] },
+  test: { environment: "node", include: ["src/**/*.test.ts", "functions/src/**/*.test.ts"] },
 });

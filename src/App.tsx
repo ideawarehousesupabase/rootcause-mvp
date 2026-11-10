@@ -13,8 +13,6 @@ import Evidence from "@/pages/candidate/Evidence";
 import Applications from "@/pages/candidate/Applications";
 import Diagnostics from "@/pages/candidate/Diagnostics";
 import Actions from "@/pages/candidate/Actions";
-import Jobs from "@/pages/candidate/Jobs";
-import SkillsCourses from "@/pages/candidate/SkillsCourses";
 import Analytics from "@/pages/candidate/Analytics";
 import InstitutionDashboard from "@/pages/institution/InstitutionDashboard";
 
@@ -54,8 +52,6 @@ export default function App() {
             <Route path="evidence" element={<Evidence />} />
             <Route path="applications" element={<Applications />} />
             <Route path="diagnostics" element={<Diagnostics />} />
-            <Route path="jobs" element={<Jobs />} />
-            <Route path="skills" element={<SkillsCourses />} />
             <Route path="actions" element={<Actions />} />
             <Route path="analytics" element={<Analytics />} />
           </Route>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ClipboardList, Download, Eye, MessageSquarePlus, Pencil, Plus, Search, Trash2, Undo2, Upload } from "lucide-react";
+import { ClipboardList, Download, Eye, Link2, MessageSquarePlus, Pencil, Plus, Search, Trash2, Undo2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,13 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApplicationDetailsDialog, ApplicationFormDialog, emptyInput, FeedbackDialog, toInput } from "@/components/candidate/ApplicationDialogs";
 import { CsvImportDialog } from "@/components/candidate/CsvImportDialog";
+import { JobLinkDialog } from "@/components/candidate/JobLinkDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState, LoadingState, PageHeader } from "@/components/shared";
-import { APPLICATION_STATUSES, ROLE_FAMILIES, type Application, type ApplicationStatus } from "@/data/types";
+import { APPLICATION_STATUSES, ROLE_FAMILIES, type Application, type ApplicationInput, type ApplicationStatus } from "@/data/types";
 import { derivedState } from "@/engine";
 import { applicationsToCsv, downloadText } from "@/lib/csv";
 import { cn, formatDate, todayLocal } from "@/lib/utils";
 import { addApplication, bulkSetStatus, deleteApplication, deleteApplications, patchApplication, setStatus, undoImport, updateApplication } from "@/services/evidence";
+import { advertToInput } from "@/services/jobAdverts";
 import { useCandidateData } from "@/store/CandidateDataContext";
 
 const statusTrigger: Record<ApplicationStatus, string> = {
@@ -39,8 +41,9 @@ export default function Applications() {
   const [cvFilter, setCvFilter] = useState(ALL);
   const [source, setSource] = useState(ALL);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [form, setForm] = useState<{ open: boolean; editing: Application | null }>({ open: false, editing: null });
+  const [form, setForm] = useState<{ open: boolean; editing: Application | null; prefill?: ApplicationInput; jobUrl?: string }>({ open: false, editing: null });
   const [importOpen, setImportOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [feedbackFor, setFeedbackFor] = useState<Application | null>(null);
   const [toDelete, setToDelete] = useState<Application[] | null>(null);
 
@@ -67,7 +70,8 @@ export default function Applications() {
       if (family !== ALL && a.roleFamily !== family) return false;
       if (cvFilter !== ALL && a.cvVersionId !== cvFilter) return false;
       if (source === "manual" && a.source !== "manual") return false;
-      if (source !== ALL && source !== "manual" && a.importBatchId !== source) return false;
+      if (source === "link" && a.source !== "link") return false;
+      if (source !== ALL && source !== "manual" && source !== "link" && a.importBatchId !== source) return false;
       return !q || `${a.jobTitle} ${a.employer} ${a.location}`.toLowerCase().includes(q);
     });
   }, [applications, search, statusFilter, family, cvFilter, source, today]);
@@ -96,6 +100,9 @@ export default function Applications() {
             </Button>
             <Button variant="outline" onClick={() => setImportOpen(true)}>
               <Upload /> Import CSV
+            </Button>
+            <Button variant="outline" onClick={() => setLinkOpen(true)}>
+              <Link2 /> Import from job link
             </Button>
             <Button onClick={() => setForm({ open: true, editing: null })}>
               <Plus /> Add application
@@ -137,7 +144,7 @@ export default function Applications() {
               value={source}
               onChange={setSource}
               label="Source"
-              options={[["manual", "Manual entry"], ...batches.map((b, i) => [b.id, `Import ${i + 1} (${b.count})`] as [string, string])]}
+              options={[["manual", "Manual entry"], ["link", "Job links"], ...batches.map((b, i) => [b.id, `Import ${i + 1} (${b.count})`] as [string, string])]}
             />
           </div>
         </div>
@@ -328,13 +335,28 @@ export default function Applications() {
       <ApplicationFormDialog
         open={form.open}
         onOpenChange={(open) => setForm((s) => ({ ...s, open }))}
-        title={form.editing ? "Edit application" : "Add application"}
-        initial={form.editing ? toInput(form.editing) : emptyInput(cvVersions, user.profile?.targetRoleFamilies[0])}
+        title={form.editing ? "Edit application" : form.jobUrl ? "Check the imported application" : "Add application"}
+        initial={form.editing ? toInput(form.editing) : form.prefill ?? emptyInput(cvVersions, user.profile?.targetRoleFamilies[0])}
         cvVersions={cvVersions}
         onSubmit={async (input) => {
           if (form.editing) await updateApplication(uid, form.editing.id, input);
-          else await addApplication(uid, input);
+          else await addApplication(uid, input, { jobUrl: form.jobUrl });
           toast.success("Application saved.");
+        }}
+      />
+
+      <JobLinkDialog
+        open={linkOpen}
+        onOpenChange={setLinkOpen}
+        hasCv={cvVersions.length > 0}
+        onRead={(advert) => {
+          setLinkOpen(false);
+          setForm({ open: true, editing: null, prefill: advertToInput(advert, cvVersions), jobUrl: advert.url });
+          toast.success(`Read the advert from ${advert.portal}. Check the details, then save.`);
+        }}
+        onManual={(url) => {
+          setLinkOpen(false);
+          setForm({ open: true, editing: null, jobUrl: url });
         }}
       />
 

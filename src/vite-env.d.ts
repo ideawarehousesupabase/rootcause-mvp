@@ -10,6 +10,7 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MEASUREMENT_ID?: string;
   readonly VITE_USE_EMULATORS?: string;
   readonly VITE_FIRESTORE_EMULATOR_PORT?: string;
+  readonly VITE_FUNCTIONS_EMULATOR_PORT?: string;
 }
 
 interface ImportMeta {

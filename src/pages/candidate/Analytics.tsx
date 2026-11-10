@@ -23,7 +23,7 @@ const VERDICT: Record<string, { label: string; variant: "green" | "red" | "amber
 };
 
 export default function Analytics() {
-  const { loading, applications, funnel: f, today, latestDiagnosis, currentActions, latestEvaluation, cvLabel, progressSnapshots } = useCandidateData();
+  const { loading, applications, funnel: f, today, latestDiagnosis, currentActions, latestEvaluation, cvLabel } = useCandidateData();
   const [breakdown, setBreakdown] = useState<"family" | "cv" | "seniority">("family");
   if (loading) return <LoadingState />;
 
@@ -234,39 +234,6 @@ export default function Analytics() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
-
-      {progressSnapshots.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Saved progress history</CardTitle>
-            <CardDescription className="mt-1">
-              Your overall rates as saved to your account at the end of each month ({progressSnapshots.length} month{progressSnapshots.length === 1 ? "" : "s"} so far)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={progressSnapshots.map((p) => ({
-                  month: new Date(`${p.id}-01T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
-                  response: Math.round(p.responseRate * 100),
-                  interview: Math.round(p.interviewRate * 100),
-                  offer: Math.round(p.interviewToOffer * 100),
-                }))}
-                margin={{ top: 5, right: 16, left: -16, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis unit="%" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => `${v}%`} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="response" name="Response rate" stroke={CHART_COLORS.responses} strokeWidth={2} dot />
-                <Line type="monotone" dataKey="interview" name="Interview rate" stroke={CHART_COLORS.interviews} strokeWidth={2} dot />
-                <Line type="monotone" dataKey="offer" name="Interview → offer" stroke={CHART_COLORS.offers} strokeWidth={2} dot />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
 
       <Alert variant="info" className="mt-6">
         <Info />

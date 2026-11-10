@@ -73,9 +73,16 @@ const appPayload = (input: ApplicationInput) => ({
   jdAnalysis: analyseJd(input.jobDescription),
 });
 
-export async function addApplication(uid: string, input: ApplicationInput) {
+export async function addApplication(uid: string, input: ApplicationInput, from: { jobUrl?: string } = {}) {
   const ref = doc(subCol(uid, "applications"));
-  await setDoc(ref, { ...appPayload(input), source: "manual", importBatchId: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  await setDoc(ref, {
+    ...appPayload(input),
+    source: from.jobUrl ? "link" : "manual",
+    jobUrl: from.jobUrl ?? null,
+    importBatchId: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
   return ref.id;
 }
 

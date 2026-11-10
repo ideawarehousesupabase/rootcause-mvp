@@ -50,8 +50,7 @@ service cloud.firestore {
 
       // The user's data, only in the app's own collections and only while the user record exists.
       match /{sub}/{docId} {
-        allow read, write: if sub in ['cvVersions', 'applications', 'diagnoses', 'actions', 'evaluations', 'engineState',
-                                       'recommendations', 'roadmap', 'progressSnapshots']
+        allow read, write: if sub in ['cvVersions', 'applications', 'diagnoses', 'actions', 'evaluations', 'engineState']
           && exists(userPath(uid));
       }
     }

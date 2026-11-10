@@ -434,6 +434,7 @@ export function ApplicationDetailsDialog({
                 <DialogTitle>{a.jobTitle}</DialogTitle>
                 <StatusBadge status={a.status} derived={derivedState(a, today)} />
                 {a.source === "csv" && <Badge variant="outline">Imported</Badge>}
+                {a.source === "link" && <Badge variant="outline">From job link</Badge>}
               </div>
               <DialogDescription>
                 {a.employer}
@@ -452,6 +453,16 @@ export function ApplicationDetailsDialog({
                   <JdSummary analysis={a.jdAnalysis} />
                 </dd>
               </div>
+              {a.jobUrl && /^https?:\/\//i.test(a.jobUrl) && (
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Advert link</dt>
+                  <dd className="mt-1 truncate">
+                    <a href={a.jobUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      {a.jobUrl}
+                    </a>
+                  </dd>
+                </div>
+              )}
               <Detail className="sm:col-span-2" label="Job description" value={a.jobDescription || "Not recorded — paste it to improve the diagnosis"} />
               <Detail className="sm:col-span-2" label="Feedback" value={a.feedback || "No feedback recorded"} />
             </dl>

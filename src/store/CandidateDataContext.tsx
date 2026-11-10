@@ -7,14 +7,10 @@ import type {
   CvVersion,
   Diagnosis,
   Evaluation,
-  ProgressSnapshot,
-  Recommendations,
-  RoadmapStep,
   UserDoc,
 } from "@/data/types";
 import { applyVerdict, defaultMultipliers, evaluateDiagnosis, funnel, readiness, type Funnel, type Readiness } from "@/engine";
 import { todayLocal } from "@/lib/utils";
-import { saveProgressSnapshot } from "@/services/career";
 import { finaliseVerdict, markInconclusive, setChangesApplied, writeEvaluation } from "@/services/diagnosis";
 import { subCol, subDoc, withId, type UserSub } from "@/services/paths";
 import { syncMemberSummary } from "@/services/sharing";
@@ -32,9 +28,6 @@ interface CandidateDataValue {
   diagnoses: Diagnosis[];
   actions: CorrectiveAction[];
   evaluations: Evaluation[];
-  roadmap: RoadmapStep[];
-  recommendations: Recommendations | null;
-  progressSnapshots: ProgressSnapshot[];
   multipliers: ClassMultipliers;
   funnel: Funnel;
   readiness: Readiness;
@@ -90,9 +83,6 @@ export function CandidateDataProvider({ user, children }: { user: UserDoc; child
   const diags = useCollection<Diagnosis>(uid, "diagnoses", "createdAt");
   const acts = useCollection<CorrectiveAction>(uid, "actions");
   const evals = useCollection<Evaluation>(uid, "evaluations");
-  const steps = useCollection<RoadmapStep>(uid, "roadmap");
-  const snapshots = useCollection<ProgressSnapshot>(uid, "progressSnapshots");
-  const recommendations = useDocData<Recommendations>(uid, "recommendations", "current");
   const calibration = useDocData<{ classMultipliers?: ClassMultipliers }>(uid, "engineState", "calibration");
   const multipliers = useMemo<ClassMultipliers>(() => ({ ...defaultMultipliers(), ...(calibration?.classMultipliers ?? {}) }), [calibration]);
 
@@ -121,9 +111,6 @@ export function CandidateDataProvider({ user, children }: { user: UserDoc; child
       diagnoses: diags.items,
       actions: acts.items,
       evaluations: evals.items,
-      roadmap: [...steps.items].sort((a, b) => a.order - b.order),
-      recommendations,
-      progressSnapshots: [...snapshots.items].sort((a, b) => a.id.localeCompare(b.id)),
       multipliers,
       funnel: funnel(applications, today),
       readiness: readiness({ profile: user.profile, cvVersions, applications, today }),
@@ -133,7 +120,7 @@ export function CandidateDataProvider({ user, children }: { user: UserDoc; child
       evidenceChangedSinceDiagnosis,
       cvLabel: (id) => cvVersions.find((c) => c.id === id)?.label ?? "Removed CV",
     };
-  }, [user, uid, today, loading, error, cvs.items, apps.items, diags.items, acts.items, evals.items, steps.items, snapshots.items, recommendations, multipliers]);
+  }, [user, uid, today, loading, error, cvs.items, apps.items, diags.items, acts.items, evals.items, multipliers]);
 
   // ---- Closed loop: mark changes applied and keep the evaluation current ----
   const busy = useRef(false);
@@ -180,15 +167,6 @@ export function CandidateDataProvider({ user, children }: { user: UserDoc; child
     };
     void run();
   }, [value, loading, uid, today]);
-
-  // ---- Progress measurement: keep this month's funnel snapshot current ----
-  const f = value.funnel;
-  const funnelKey = [f.applications, f.decided, f.responses, f.interviews, f.offers].join("/");
-  useEffect(() => {
-    if (loading || !f.applications) return;
-    const t = setTimeout(() => saveProgressSnapshot(uid, today, f).catch((err) => console.error("Progress snapshot failed", err)), 2000);
-    return () => clearTimeout(t);
-  }, [loading, uid, today, funnelKey]);
 
   // ---- Member summary sync (only while sharing consent is active) ----
   useEffect(() => {

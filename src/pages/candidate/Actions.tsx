@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Archive, CheckCircle2, ChevronDown, Circle, Clock, Info, ListChecks, Lock, Microscope, Target } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RoadmapTab } from "@/components/candidate/RoadmapTab";
 import { ActionStatusBadge, CauseBadge, EmptyState, LoadingState, PageHeader, PriorityBadge } from "@/components/shared";
 import type { ActionStatus, CorrectiveAction } from "@/data/types";
 import { EVALUATION } from "@/engine";
@@ -25,34 +23,7 @@ const statusActive = {
 const PRIORITY = { High: 0, Medium: 1, Low: 2 };
 
 export default function Actions() {
-  const { loading } = useCandidateData();
-  const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "roadmap" ? "roadmap" : "actions";
-  if (loading) return <LoadingState />;
-  return (
-    <>
-      <PageHeader
-        title="Corrective Action Plan"
-        description="Actions for your primary cause are active; secondary actions are held back so one change can be measured at a time. The career roadmap adds learning and career steps."
-      />
-      <Tabs value={tab} onValueChange={(v) => setParams(v === "roadmap" ? { tab: v } : {}, { replace: true })}>
-        <TabsList>
-          <TabsTrigger value="actions">Corrective actions</TabsTrigger>
-          <TabsTrigger value="roadmap">Career roadmap</TabsTrigger>
-        </TabsList>
-        <TabsContent value="actions">
-          <CorrectiveActions />
-        </TabsContent>
-        <TabsContent value="roadmap">
-          <RoadmapTab />
-        </TabsContent>
-      </Tabs>
-    </>
-  );
-}
-
-function CorrectiveActions() {
-  const { uid, latestDiagnosis, currentActions, actions, latestEvaluation } = useCandidateData();
+  const { uid, loading, latestDiagnosis, currentActions, actions, latestEvaluation } = useCandidateData();
   const [showArchived, setShowArchived] = useState(false);
 
   const active = currentActions.filter((a) => a.status !== "Queued").sort((a, b) => PRIORITY[a.priority] - PRIORITY[b.priority]);
@@ -61,9 +32,18 @@ function CorrectiveActions() {
   const completed = active.filter((a) => a.status === "Completed").length;
   const percent = active.length ? Math.round((completed / active.length) * 100) : 0;
 
+  if (loading) return <LoadingState />;
+  const header = (
+    <PageHeader
+      title="Corrective Action Plan"
+      description="Actions for your primary cause are active; secondary actions are held back so one change can be measured at a time."
+    />
+  );
+
   if (!latestDiagnosis) {
     return (
       <>
+        {header}
         <EmptyState
           icon={ListChecks}
           title="No action plan yet"
@@ -80,6 +60,7 @@ function CorrectiveActions() {
 
   return (
     <>
+      {header}
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="md:col-span-2">
           <CardHeader className="pb-2">

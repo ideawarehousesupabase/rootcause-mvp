@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/shared";
-import { cn } from "@/lib/utils";
 
 const steps = [
   { icon: ClipboardList, title: "Capture employment evidence", text: "CVs, applications, job descriptions, recruiter responses and interview outcomes in one structured record." },
@@ -36,12 +35,6 @@ const features = [
   { icon: Building2, title: "Institutional Employability Insights", text: "Cohort-level view of common barriers and outcomes for careers services and employability providers." },
 ];
 
-const plans = [
-  { name: "Free", price: "Free", period: "", features: ["Limited application analysis", "Baseline diagnostic"], highlight: false },
-  { name: "Starter", price: "£12", period: "/month", features: ["Root-cause diagnostics", "Application tracking", "Progress monitoring", "Corrective action plans"], highlight: false },
-  { name: "Pro", price: "£22", period: "/month", features: ["Everything in Starter", "Advanced diagnostics", "Target-role analysis", "Detailed reports"], highlight: true },
-  { name: "Premium", price: "£60", period: "/month", features: ["Full platform access", "Coaching support", "Advanced analytics"], highlight: false },
-];
 
 export default function Landing() {
   return (
@@ -53,7 +46,6 @@ export default function Landing() {
             <a href="#how-it-works" className="hover:text-navy">How it works</a>
             <a href="#capabilities" className="hover:text-navy">Capabilities</a>
             <a href="#audiences" className="hover:text-navy">Who it's for</a>
-            <a href="#pricing" className="hover:text-navy">Pricing</a>
           </nav>
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild className="hidden sm:inline-flex">
@@ -218,57 +210,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="scroll-mt-16 border-t bg-white py-20">
-        <div className="container">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-navy">Simple, transparent pricing</h2>
-            <p className="mt-3 text-muted-foreground">Individual subscription plans. Prices shown for illustration in this MVP; no payments are taken.</p>
-          </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {plans.map((p) => (
-              <Card key={p.name} className={cn("flex flex-col", p.highlight && "border-primary shadow-lg ring-1 ring-primary")}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{p.name}</CardTitle>
-                    {p.highlight && <Badge variant="blue">Most popular</Badge>}
-                  </div>
-                  <p className="pt-2">
-                    <span className="text-3xl font-bold text-navy">{p.price}</span>
-                    <span className="text-sm text-muted-foreground">{p.period}</span>
-                  </p>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col">
-                  <ul className="flex-1 space-y-2 text-sm">
-                    {p.features.map((f) => (
-                      <li key={f} className="flex gap-2">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-teal" /> {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button className="mt-6 w-full" variant={p.highlight ? "default" : "outline"} asChild>
-                    <Link to="/register">Get Started</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <div className="mt-8 flex flex-col items-start gap-4 rounded-xl border bg-blue-50/50 p-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-4">
-              <Building2 className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
-              <div>
-                <p className="font-semibold text-navy">Institutional licensing</p>
-                <p className="text-sm text-muted-foreground">
-                  Universities, employability programmes and outplacement providers can license RootCause Careers for their cohorts. Licensing terms are agreed directly.
-                </p>
-              </div>
-            </div>
-            <Button variant="outline" asChild>
-              <Link to="/register">Register your institution</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
 
       <footer className="bg-navy text-navy-foreground">
         <div className="container flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
@@ -279,7 +220,6 @@ export default function Landing() {
           <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/70">
             <a href="#how-it-works" className="hover:text-white">How it works</a>
             <a href="#capabilities" className="hover:text-white">Capabilities</a>
-            <a href="#pricing" className="hover:text-white">Pricing</a>
             <Link to="/login" className="hover:text-white">Sign In</Link>
             <Link to="/register" className="hover:text-white">Register</Link>
           </nav>

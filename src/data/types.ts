@@ -167,14 +167,16 @@ export interface Application {
   interviewStage: InterviewStage;
   interviewOutcome: InterviewOutcome;
   feedback: string;
-  source: "manual" | "csv";
+  source: "manual" | "csv" | "link";
   importBatchId: string | null;
+  /** The advert link, for applications imported from a job link. */
+  jobUrl?: string | null;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
   jdAnalysis: JdAnalysis;
 }
 
-export type ApplicationInput = Omit<Application, "id" | "source" | "importBatchId" | "createdAt" | "updatedAt" | "jdAnalysis">;
+export type ApplicationInput = Omit<Application, "id" | "source" | "importBatchId" | "jobUrl" | "createdAt" | "updatedAt" | "jdAnalysis">;
 
 // ---------- Diagnoses ----------
 export interface EvidenceRef {
@@ -265,65 +267,6 @@ export interface Evaluation extends EvaluationResult {
 }
 
 export type ClassMultipliers = Record<CauseClass, number>;
-
-// ---------- Career development ----------
-export interface SkillGap {
-  skill: string;
-  /** Share of the target roles that ask for this skill (0–1). */
-  importance: number;
-  required: boolean;
-  have: boolean;
-  /** Shown in a CV bullet, not only listed. */
-  evidenced: boolean;
-  sources: number;
-}
-
-export interface CourseRecommendation {
-  courseId: string;
-  skill: string;
-  reason: string;
-}
-
-export interface Recommendations {
-  generatedAt: Timestamp | null;
-  engineVersion: string;
-  targetFamilies: RoleFamily[];
-  rolesConsidered: number;
-  gaps: SkillGap[];
-  courses: CourseRecommendation[];
-}
-
-export const ROADMAP_KINDS = ["action", "learning", "career"] as const;
-export type RoadmapKind = (typeof ROADMAP_KINDS)[number];
-export const ROADMAP_STATUSES = ["To Do", "In Progress", "Completed"] as const;
-export type RoadmapStatus = (typeof ROADMAP_STATUSES)[number];
-
-export interface RoadmapStep {
-  id: string;
-  kind: RoadmapKind;
-  title: string;
-  detail: string;
-  /** The corrective action or course this step comes from. */
-  sourceId: string | null;
-  status: RoadmapStatus;
-  order: number;
-  targetDate: string | null;
-  createdAt: Timestamp | null;
-  completedAt: Timestamp | null;
-}
-
-export interface ProgressSnapshot {
-  id: string; // YYYY-MM
-  applications: number;
-  decided: number;
-  responses: number;
-  interviews: number;
-  offers: number;
-  responseRate: number;
-  interviewRate: number;
-  interviewToOffer: number;
-  updatedAt: Timestamp | null;
-}
 
 // ---------- Institutions ----------
 export interface Institution {

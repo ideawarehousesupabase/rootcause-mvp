@@ -2,11 +2,9 @@ import type { ReactNode } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import {
   BarChart3,
-  Briefcase,
   ClipboardList,
   FileSearch,
   FileText,
-  GraduationCap,
   LayoutDashboard,
   ListChecks,
   Microscope,
@@ -28,8 +26,6 @@ const candidateNav: NavItem[] = [
   { to: "/app/applications", label: "Application Tracker", icon: ClipboardList },
   { to: "/app/diagnostics", label: "Root-Cause Diagnostics", icon: Microscope },
   { to: "/app/actions", label: "Corrective Action Plan", icon: ListChecks },
-  { to: "/app/jobs", label: "Job Opportunities", icon: Briefcase },
-  { to: "/app/skills", label: "Skills & Courses", icon: GraduationCap },
   { to: "/app/analytics", label: "Progress Analytics", icon: BarChart3 },
 ];
 

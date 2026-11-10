@@ -387,11 +387,6 @@ function CandidateInsights({ members, onRemove }: { members: Member[]; onRemove:
 
 function Reports({ totals, barriers, members, name }: { totals: Totals; barriers: Barrier[]; members: Member[]; name: string }) {
   const primaryShare = barriers.filter((b) => b.primary > 0).map((b) => ({ name: b.category, value: b.primary }));
-  const conversion = [
-    { stage: "Application → response", rate: Math.round(ratio(totals.responses, totals.decided) * 100) },
-    { stage: "Application → interview", rate: Math.round(ratio(totals.interviews, totals.decided) * 100) },
-    { stage: "Interview → offer", rate: Math.round(ratio(totals.offers, totals.interviews) * 100) },
-  ];
   const monthMap = new Map<string, { key: string; month: string; applications: number; responses: number; interviews: number; offers: number }>();
   members.forEach((m) =>
     m.monthly.forEach((x) => {
@@ -400,9 +395,6 @@ function Reports({ totals, barriers, members, name }: { totals: Totals; barriers
     }),
   );
   const monthly = [...monthMap.values()].sort((a, b) => a.key.localeCompare(b.key));
-  const completionByCandidate = members
-    .map((m) => ({ name: m.name.split(" ")[0], completion: Math.round(ratio(m.actionsCompleted, m.actionsTotal) * 100) }))
-    .sort((a, b) => b.completion - a.completion);
   const verdicts = ["corroborated", "weakened", "inconclusive", "collecting"].map((v) => ({ v, n: members.filter((m) => m.latestVerdict === v).length }));
 
   function exportCsv() {
@@ -475,23 +467,6 @@ function Reports({ totals, barriers, members, name }: { totals: Totals; barriers
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Recruitment conversion rates</CardTitle>
-            <CardDescription>Cohort-wide funnel (decided applications)</CardDescription>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={conversion} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
-                <YAxis unit="%" tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => `${v}%`} />
-                <Bar dataKey="rate" name="Conversion" fill={CHART_COLORS.applications} radius={[4, 4, 0, 0]} barSize={48} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
             <CardTitle>Cohort progress</CardTitle>
             <CardDescription>Monthly totals across the cohort</CardDescription>
           </CardHeader>
@@ -508,25 +483,6 @@ function Reports({ totals, barriers, members, name }: { totals: Totals; barriers
                 <Line dataKey="interviews" name="Interviews" stroke={CHART_COLORS.interviews} strokeWidth={2} dot={{ r: 3 }} />
                 <Line dataKey="offers" name="Offers" stroke={CHART_COLORS.offers} strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Corrective action completion</CardTitle>
-            <CardDescription>
-              {totals.actionsCompleted} of {totals.actionsTotal} active actions completed
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={completionByCandidate} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
-                <YAxis unit="%" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => [`${v}%`, "Actions completed"]} />
-                <Bar dataKey="completion" fill={CHART_COLORS.responses} radius={[4, 4, 0, 0]} />
-              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>

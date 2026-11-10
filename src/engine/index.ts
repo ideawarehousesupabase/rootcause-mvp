@@ -4,15 +4,3 @@ export { readiness, runDiagnosis, type EngineInput, type Readiness } from "./dia
 export { generateActions, type ActionDraft } from "./actions";
 export { applyVerdict, defaultMultipliers, evaluateDiagnosis } from "./evaluate";
 export * from "./funnel";
-export {
-  candidateSkills,
-  courseStep,
-  recommendCourses,
-  skillsGap,
-  suggestRoadmapSteps,
-  targetFamilies,
-  vacancyMatch,
-  type CandidateSkills,
-  type RoadmapDraft,
-  type VacancyMatch,
-} from "./career";

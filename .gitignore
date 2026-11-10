@@ -6,3 +6,4 @@ dist
 .firebase/
 firestore-debug.log
 firebase-debug.log
+functions/lib

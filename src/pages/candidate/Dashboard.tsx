@@ -1,17 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Award, Bell, CalendarCheck, CheckCircle2, Circle, ListChecks, Mail, Microscope, Percent, Plus, Send, TrendingUp, Upload } from "lucide-react";
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ArrowRight, Award, Bell, CalendarCheck, CheckCircle2, Circle, ListChecks, Mail, Microscope, Percent, Plus, Send, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApplicationFormDialog, emptyInput } from "@/components/candidate/ApplicationDialogs";
-import { CsvImportDialog } from "@/components/candidate/CsvImportDialog";
 import { ActionStatusBadge, CauseBadge, ConfidenceMeter, EngineBadge, KpiCard, LoadingState, PageHeader, PriorityBadge, StatusBadge } from "@/components/shared";
-import { daysBetween, derivedState, monthlyActivity } from "@/engine";
-import { CHART_COLORS } from "@/lib/chartColors";
+import { daysBetween, derivedState } from "@/engine";
 import { formatDate, todayLocal } from "@/lib/utils";
 import { addApplication } from "@/services/evidence";
 import { useCandidateData } from "@/store/CandidateDataContext";
@@ -24,7 +21,6 @@ export default function Dashboard() {
   const { uid, user, loading, applications, cvVersions, funnel: f, today, latestDiagnosis, currentActions, latestEvaluation, readiness, evidenceChangedSinceDiagnosis } = data;
   const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   if (loading) return <LoadingState />;
 
   const firstName = user.fullName.split(" ")[0] || "there";
@@ -53,7 +49,6 @@ export default function Dashboard() {
   if (emptyCvs.length) nudges.push({ text: `"${emptyCvs[0].label}" has no content — add its text so it can be analysed.`, to: "/app/evidence" });
   if (evidenceChangedSinceDiagnosis && readiness.canRun) nudges.push({ text: "New evidence since your last diagnosis — re-run it.", to: "/app/diagnostics" });
 
-  const activity = monthlyActivity(applications, today);
   const recent = applications.slice(0, 6);
   const primary = latestDiagnosis?.primary;
 
@@ -64,9 +59,6 @@ export default function Dashboard() {
         description="Your job-search performance, latest diagnosis and corrective actions — all from the evidence in your workspace."
         actions={
           <>
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
-              <Upload /> Import CSV
-            </Button>
             <Button onClick={() => setAddOpen(true)}>
               <Plus /> Add Application
             </Button>
@@ -196,33 +188,8 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-5">
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Job-search activity</CardTitle>
-            <CardDescription>By month of application</CardDescription>
-          </CardHeader>
-          <CardContent className="h-72">
-            {activity.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={activity} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="applications" name="Applications" stroke={CHART_COLORS.applications} strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="responses" name="Responses" stroke={CHART_COLORS.responses} strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="interviews" name="Interviews" stroke={CHART_COLORS.interviews} strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="pt-16 text-center text-sm text-muted-foreground">No applications yet.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="xl:col-span-3">
+      <div className="mt-6">
+        <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle>Recent applications</CardTitle>
@@ -278,7 +245,6 @@ export default function Dashboard() {
           toast.success("Application added.");
         }}
       />
-      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} uid={uid} cvVersions={cvVersions} applications={applications} />
     </>
   );
 }
