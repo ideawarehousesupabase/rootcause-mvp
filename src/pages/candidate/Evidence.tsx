@@ -199,6 +199,23 @@ export default function Evidence() {
                         ))}
                       </ul>
                     </div>
+                    {(selectedCv.projects ?? []).length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projects</p>
+                        <ul className="mt-2 space-y-2">
+                          {selectedCv.projects!.map((p, i) => (
+                            <li key={i} className="rounded-md border p-2.5">
+                              {p.name && <p className="font-medium">{p.name}</p>}
+                              {p.bullets.map((b, j) => (
+                                <p key={j} className="mt-1 text-muted-foreground">
+                                  {b}
+                                </p>
+                              ))}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {selectedCv.analysis.mentionedSkills.length > 0 && (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Skills the engine found in this CV</p>

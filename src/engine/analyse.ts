@@ -1,4 +1,4 @@
-import type { BulletAnalysis, CvAnalysis, CvExperience, JdAnalysis } from "@/data/types";
+import type { BulletAnalysis, CvAnalysis, CvExperience, CvProject, JdAnalysis } from "@/data/types";
 import {
   FAMILY_TERMS,
   GENERIC_PHRASES,
@@ -29,10 +29,16 @@ export function analyseBullet(text: string): BulletAnalysis {
   return { text, quantified, weakOpening: Boolean(weak), strongVerb, outcomeWord, strength, reasons };
 }
 
-export function analyseCv(cv: { personalStatement: string; experience: CvExperience[]; skillsSection: string[] }): CvAnalysis {
+export function analyseCv(cv: { personalStatement: string; experience: CvExperience[]; projects?: CvProject[]; skillsSection: string[] }): CvAnalysis {
+  // Bullet quality is measured on work experience only. Projects count as evidence of skills, nothing more.
   const bullets = cv.experience.flatMap((e) => e.bullets).filter((b) => b.trim());
   const analysed = bullets.map(analyseBullet);
-  const fullText = [cv.personalStatement, ...cv.experience.flatMap((e) => [e.role, ...e.bullets]), ...cv.skillsSection].join("\n");
+  const fullText = [
+    cv.personalStatement,
+    ...cv.experience.flatMap((e) => [e.role, ...e.bullets]),
+    ...(cv.projects ?? []).flatMap((p) => [p.name, ...p.bullets]),
+    ...cv.skillsSection,
+  ].join("\n");
   const statement = normalise(cv.personalStatement);
   const genericHits = findTerms(statement, GENERIC_PHRASES);
   const familiesNamed = Object.entries(FAMILY_TERMS)

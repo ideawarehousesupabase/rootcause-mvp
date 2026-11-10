@@ -75,12 +75,31 @@ async function extractPdf(data: ArrayBuffer) {
   return pages.join("\n\n");
 }
 
+/** Word's HTML (from mammoth) to text, keeping list items as "• " bullets and table cells apart. */
+export function docxHtmlToText(html: string) {
+  return html
+    .replace(/<(td|th)[^>]*>([\s\S]*?)<\/\1>/gi, (_m, _t, cell: string) => `${cell.replace(/<br\s*\/?>|<\/p>/gi, " ")} | `)
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<br\s*\/?>|<\/(p|h[1-6]|tr|ul|ol|table)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .split("\n")
+    .map((l) => l.replace(/\s+/g, " ").replace(/(\s*\|\s*)+$/, "").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export async function extractDocx(data: ArrayBuffer) {
   const mammoth = await import("mammoth");
   // The browser build reads `arrayBuffer`; the Node build (used in tests) reads `buffer`.
-  const input = { arrayBuffer: data, buffer: data } as unknown as Parameters<typeof mammoth.extractRawText>[0];
-  const result = await mammoth.extractRawText(input);
-  return result.value.replace(/\n{3,}/g, "\n\n").trim();
+  const input = { arrayBuffer: data, buffer: data } as unknown as Parameters<typeof mammoth.convertToHtml>[0];
+  const result = await mammoth.convertToHtml(input);
+  return docxHtmlToText(result.value);
 }
 
 /** Plain text of a CV file. Throws a readable error for unsupported or unreadable files. */

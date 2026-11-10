@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { cvFileKind, extractCvText, extractDocx, pdfItemsToText } from "./cvExtract";
+import { cvFileKind, docxHtmlToText, extractCvText, extractDocx, pdfItemsToText } from "./cvExtract";
 
 async function makeDocx(paragraphs: string[]) {
   const zip = new JSZip();
@@ -34,6 +34,13 @@ describe("CV file extraction", () => {
     const text = await extractDocx(await makeDocx(["PERSONAL STATEMENT", "Finance graduate.", "EXPERIENCE", "- Reduced invoice errors by 25%."]));
     expect(text).toContain("Finance graduate.");
     expect(text).toContain("Reduced invoice errors by 25%.");
+  });
+
+  it("keeps Word list items as bullets and table cells apart", () => {
+    const html =
+      "<h2>EXPERIENCE</h2><table><tr><td><p>Data Intern</p></td><td><p>Jun 2024 – Aug 2024</p></td></tr></table>" +
+      "<ul><li>Cut report time by 30% &amp; automated checks.</li><li>Built a &lt;SQL&gt; model.</li></ul><p>SKILLS</p>";
+    expect(docxHtmlToText(html)).toBe("EXPERIENCE\nData Intern | Jun 2024 – Aug 2024\n\n• Cut report time by 30% & automated checks.\n• Built a <SQL> model.\nSKILLS");
   });
 
   it("rebuilds lines from PDF text runs", () => {

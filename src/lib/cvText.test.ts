@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { analyseCv } from "@/engine";
 import { splitCvText } from "./cvText";
 
 describe("splitCvText", () => {
@@ -85,7 +86,7 @@ describe("splitCvText", () => {
     ]);
   });
 
-  it("handles the employer before the role, capital-letter company names and PDF bullet characters", () => {
+  it("handles the employer before the role, capital-letter company names and PDF bullet characters, and keeps projects apart", () => {
     const cv = splitCvText(
       [
         "PROFESSIONAL EXPERIENCE",
@@ -107,12 +108,83 @@ describe("splitCvText", () => {
       end: "Current",
       bullets: ["Automated weekly reports, saving 5 hours a week.", "Trained 4 new joiners on the reporting tools."],
     });
-    expect(cv.experience[1]).toMatchObject({ role: "Secure Chat App", start: "2024", bullets: ["End-to-end encrypted messaging using the Signal protocol."] });
+    expect(cv.experience).toHaveLength(1);
+    expect(cv.projects).toEqual([{ name: "Secure Chat App", bullets: ["End-to-end encrypted messaging using the Signal protocol."] }]);
   });
 
   it("keeps bullet points when no experience heading is recognised", () => {
     const cv = splitCvText("Alex Smith\nWhat I've done\n- Led a team of 5 on a market research project.\n- Wrote the final report.");
     expect(cv.experience).toEqual([{ role: "", employer: "", start: "", end: "", bullets: ["Led a team of 5 on a market research project.", "Wrote the final report."] }]);
     expect(cv.personalStatement).toBe("");
+  });
+  it("keeps project descriptions under Projects instead of making them job roles", () => {
+    const cv = splitCvText(
+      [
+        "WORK EXPERIENCE",
+        "Cyber Security Intern | SecureNet Solutions | May 2024 – Jul 2024",
+        "• Ran vulnerability scans on 15 internal web apps and logged 40+ issues.",
+        "• Wrote incident reports for the security team.",
+        "ACADEMIC PROJECTS",
+        "Encrypted File Sharing System",
+        "A web app that encrypts files with AES-256 before upload",
+        "Tech stack: Python, Flask, React",
+        "Phishing URL Detector | Jan 2024",
+        "Machine learning model that flags phishing links",
+        "Trained on 10,000 URLs with 94% accuracy",
+        "EDUCATION",
+        "B.Tech Computer Engineering",
+        "University of Mumbai 2021 – 2025",
+        "CERTIFICATIONS",
+        "• Google Cybersecurity Certificate",
+        "• CompTIA Security+ (2024)",
+        "SKILLS",
+        "Python, Flask, Wireshark",
+      ].join("\n"),
+    );
+    expect(cv.experience).toEqual([
+      {
+        role: "Cyber Security Intern",
+        employer: "SecureNet Solutions",
+        start: "May 2024",
+        end: "Jul 2024",
+        bullets: ["Ran vulnerability scans on 15 internal web apps and logged 40+ issues.", "Wrote incident reports for the security team."],
+      },
+    ]);
+    expect(cv.projects).toEqual([
+      { name: "Encrypted File Sharing System", bullets: ["A web app that encrypts files with AES-256 before upload", "Tech stack: Python, Flask, React"] },
+      { name: "Phishing URL Detector", bullets: ["Machine learning model that flags phishing links", "Trained on 10,000 URLs with 94% accuracy"] },
+    ]);
+    expect(cv.skillsSection).toEqual(["Python", "Flask", "Wireshark"]);
+  });
+
+  it("does not turn description lines after a role's bullets into new roles", () => {
+    const cv = splitCvText(
+      [
+        "Experience",
+        "Software Intern, Acme Ltd, Jun 2024 - Aug 2024",
+        "• Built an internal dashboard used by 50 staff.",
+        "Worked with the Security Team on code reviews",
+        "Payments API Migration",
+        "Data Analyst Intern",
+        "Brightside Ltd",
+        "Jan 2024 - Mar 2024",
+        "• Cleaned survey data for 3 projects.",
+      ].join("\n"),
+    );
+    expect(cv.experience.map((e) => e.role)).toEqual(["Software Intern", "Data Analyst Intern"]);
+    expect(cv.experience[0].bullets).toEqual([
+      "Built an internal dashboard used by 50 staff.",
+      "Worked with the Security Team on code reviews",
+      "Payments API Migration",
+    ]);
+    expect(cv.experience[1]).toMatchObject({ employer: "Brightside Ltd", start: "Jan 2024", end: "Mar 2024" });
+  });
+
+  it("counts projects as skills evidence only, not as experience bullets in the diagnostics", () => {
+    const cv = splitCvText("EXPERIENCE\nAnalyst | Firm | 2024 - 2025\n- Reduced costs by 10%.\nPROJECTS\nChurn model\n- Built a churn model in Python with SQL data.");
+    const analysis = analyseCv(cv);
+    expect(analysis.bulletCount).toBe(1);
+    expect(analysis.bullets.map((b) => b.text)).toEqual(["Reduced costs by 10%."]);
+    expect(analysis.mentionedSkills).toEqual(expect.arrayContaining(["python", "sql"]));
   });
 });

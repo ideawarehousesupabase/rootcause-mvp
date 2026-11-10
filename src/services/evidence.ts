@@ -1,5 +1,5 @@
 import { deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, type WriteBatch } from "firebase/firestore";
-import type { Application, ApplicationInput, ApplicationStatus, CvExperience, CvVersion } from "@/data/types";
+import type { Application, ApplicationInput, ApplicationStatus, CvExperience, CvProject, CvVersion } from "@/data/types";
 import { analyseCv, analyseJd } from "@/engine";
 import { requireDb } from "@/lib/firebase";
 import { uid as makeId } from "@/lib/utils";
@@ -12,6 +12,7 @@ export interface CvInput {
   fileSize: number | null;
   personalStatement: string;
   experience: CvExperience[];
+  projects: CvProject[];
   skillsSection: string[];
   extractedText?: string | null;
 }
@@ -24,6 +25,9 @@ const cleanCv = (cv: CvInput) => ({
   experience: cv.experience
     .map((e) => ({ ...e, role: e.role.trim(), employer: e.employer.trim(), bullets: e.bullets.map((b) => b.trim()).filter(Boolean) }))
     .filter((e) => e.role || e.bullets.length),
+  projects: cv.projects
+    .map((p) => ({ name: p.name.trim(), bullets: p.bullets.map((b) => b.trim()).filter(Boolean) }))
+    .filter((p) => p.name || p.bullets.length),
   skillsSection: cv.skillsSection.map((s) => s.trim()).filter(Boolean),
   ...(cv.extractedText !== undefined ? { extractedText: cv.extractedText } : {}),
 });
@@ -135,7 +139,7 @@ export async function importApplications(
   }
   const ops = [
     ...newCvs.map((cv) => (b: WriteBatch) => {
-      const empty = { label: cv.label, fileName: null, fileSize: null, personalStatement: "", experience: [], skillsSection: [] };
+      const empty = { label: cv.label, fileName: null, fileSize: null, personalStatement: "", experience: [], projects: [], skillsSection: [] };
       b.set(subDoc(uid, "cvVersions", cv.id), { ...empty, file: null, analysis: analyseCv(empty), createdAt: serverTimestamp() });
     }),
     ...rows.map((r) => (b: WriteBatch) => {

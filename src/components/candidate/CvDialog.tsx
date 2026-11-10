@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldError } from "@/components/shared";
-import type { BulletStrength, CvExperience, CvVersion } from "@/data/types";
+import type { BulletStrength, CvExperience, CvProject, CvVersion } from "@/data/types";
 import { analyseBullet } from "@/engine";
 import { splitCvText } from "@/lib/cvText";
 import { CV_MAX_BYTES, cvContentType, extractCvText } from "@/lib/cvExtract";
@@ -48,6 +48,7 @@ export function CvDialog({
   const [statement, setStatement] = useState("");
   const [experience, setExperience] = useState<CvExperience[]>([emptyExperience()]);
   const [bulletText, setBulletText] = useState<string[]>([""]);
+  const [projects, setProjects] = useState<{ name: string; text: string }[]>([]);
   const [skills, setSkills] = useState("");
   const [file, setFile] = useState<{ name: string; size: number } | null>(null);
   const [newFile, setNewFile] = useState<File | null>(null);
@@ -59,11 +60,12 @@ export function CvDialog({
   const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
 
-  function fill(cv: { personalStatement: string; experience: CvExperience[]; skillsSection: string[] }) {
+  function fill(cv: { personalStatement: string; experience: CvExperience[]; projects?: CvProject[]; skillsSection: string[] }) {
     setStatement(cv.personalStatement);
     const exp = cv.experience.length ? cv.experience : [emptyExperience()];
     setExperience(exp);
     setBulletText(exp.map((e) => e.bullets.join("\n")));
+    setProjects((cv.projects ?? []).map((p) => ({ name: p.name, text: p.bullets.join("\n") })));
     setSkills(cv.skillsSection.join(", "));
   }
 
@@ -77,14 +79,20 @@ export function CvDialog({
     setFile(editing?.fileName ? { name: editing.fileName, size: editing.fileSize ?? 0 } : null);
     setNewFile(null);
     setExtractedText(undefined);
-    fill(editing ?? { personalStatement: "", experience: [], skillsSection: [] });
+    fill(editing ?? { personalStatement: "", experience: [], projects: [], skillsSection: [] });
   }, [open, editing?.id]);
 
   function applyPaste(text: string) {
     const split = splitCvText(text);
     fill(split);
     setShowPaste(false);
-    setNote(`Basic text splitting found ${split.experience.length} role${split.experience.length === 1 ? "" : "s"} and ${split.experience.flatMap((e) => e.bullets).length} bullets — please check below.`);
+    const roles = split.experience.length;
+    const projectCount = split.projects.length;
+    setNote(
+      `Found ${roles} role${roles === 1 ? "" : "s"} with ${split.experience.flatMap((e) => e.bullets).length} bullets` +
+        (projectCount ? ` and ${projectCount} project${projectCount === 1 ? "" : "s"}` : "") +
+        " — please check and correct them below before saving.",
+    );
   }
 
   async function onFile(f: File | undefined) {
@@ -117,6 +125,7 @@ export function CvDialog({
     applyPaste(await res.text());
   }
 
+  const updateProject = (i: number, changes: Partial<{ name: string; text: string }>) => setProjects((ps) => ps.map((p, j) => (j === i ? { ...p, ...changes } : p)));
   const updateExp = (i: number, changes: Partial<CvExperience>) => setExperience((xs) => xs.map((x, j) => (j === i ? { ...x, ...changes } : x)));
 
   async function save() {
@@ -133,6 +142,7 @@ export function CvDialog({
         fileSize: file?.size ?? null,
         personalStatement: statement,
         experience: finalExp,
+        projects: projects.map((p) => ({ name: p.name, bullets: p.text.split("\n").map((b) => b.replace(/^\s*[-•*]\s*/, "").trim()).filter(Boolean) })),
         skillsSection: skills.split(/[,\n;]/).map((s) => s.trim()).filter(Boolean),
         ...(extractedText !== undefined ? { extractedText } : {}),
       }, Boolean(newFile));
@@ -260,6 +270,25 @@ export function CvDialog({
               }}
             >
               <Plus /> Add role
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <Label>Projects</Label>
+              <p className="text-xs text-muted-foreground">Kept separate from your work experience. Skills named here still count as evidence.</p>
+            </div>
+            {projects.map((p, i) => (
+              <div key={i} className="space-y-2 rounded-lg border p-3">
+                <Input aria-label="Project name" placeholder="Project name" value={p.name} onChange={(ev) => updateProject(i, { name: ev.target.value })} />
+                <Textarea aria-label="Project details" rows={2} placeholder="What you did, one point per line" value={p.text} onChange={(ev) => updateProject(i, { text: ev.target.value })} />
+                <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setProjects((ps) => ps.filter((_, j) => j !== i))}>
+                  <Trash2 /> Remove project
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => setProjects((ps) => [...ps, { name: "", text: "" }])}>
+              <Plus /> Add project
             </Button>
           </div>
 

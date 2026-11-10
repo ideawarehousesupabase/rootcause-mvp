@@ -136,6 +136,12 @@ export interface CvExperience {
   bullets: string[];
 }
 
+/** A project from the CV's projects section. Kept apart from roles, so it never counts as work experience. */
+export interface CvProject {
+  name: string;
+  bullets: string[];
+}
+
 export interface CvVersion {
   id: string;
   label: string;
@@ -145,6 +151,8 @@ export interface CvVersion {
   extractedText?: string | null;
   personalStatement: string;
   experience: CvExperience[];
+  /** Missing on CVs saved before projects were read separately. */
+  projects?: CvProject[];
   skillsSection: string[];
   createdAt: Timestamp | null;
   analysis: CvAnalysis;
