@@ -1,4 +1,4 @@
-import { deleteDoc, getDoc, getDocs } from "firebase/firestore";
+import { Bytes, deleteDoc, getDoc, getDocs } from "firebase/firestore";
 import type { UserDoc } from "@/data/types";
 import { requireDb } from "@/lib/firebase";
 import { emailKey } from "@/lib/password";
@@ -10,7 +10,11 @@ export async function exportUserData(user: UserDoc) {
   const out: Record<string, unknown> = { exportedAt: new Date().toISOString(), account: user };
   for (const sub of USER_SUBCOLLECTIONS) {
     const snap = await getDocs(subCol(user.uid, sub));
-    out[sub] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    // Stored CV file pieces are exported as base64 text.
+    out[sub] = snap.docs.map((d) => {
+      const data = d.data();
+      return { id: d.id, ...data, ...(data.data instanceof Bytes ? { data: data.data.toBase64() } : {}) };
+    });
   }
   return out;
 }

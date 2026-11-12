@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { Bytes, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 
 const root = path.resolve(__dirname, "../..");
@@ -106,6 +106,17 @@ describe("users", () => {
     await assertSucceeds(getDocs(collection(db, "users/alice/applications")));
     await assertFails(setDoc(doc(db, "users/alice/secrets/x"), { a: 1 }));
     await assertFails(setDoc(doc(db, "users/nobody/applications/a1"), { jobTitle: "Analyst" }));
+  });
+
+  it("keep uploaded CV files only as bytes, in pieces of at most 700 KB", async () => {
+    await registerCandidate("alice");
+    const piece = (n: number) => ({ cvId: "cv1", index: 0, data: Bytes.fromUint8Array(new Uint8Array(n)) });
+    await assertSucceeds(setDoc(doc(db, "users/alice/cvFiles/cv1_0"), piece(700_000)));
+    await assertSucceeds(getDocs(collection(db, "users/alice/cvFiles")));
+    await assertFails(setDoc(doc(db, "users/alice/cvFiles/cv1_1"), piece(700_001)));
+    await assertFails(setDoc(doc(db, "users/alice/cvFiles/cv1_2"), { cvId: "cv1", index: 2, data: "not bytes" }));
+    await assertFails(setDoc(doc(db, "users/nobody/cvFiles/cv1_0"), piece(10)));
+    await assertSucceeds(deleteDoc(doc(db, "users/alice/cvFiles/cv1_0")));
   });
 
   it("can't claim an institution they don't own", async () => {

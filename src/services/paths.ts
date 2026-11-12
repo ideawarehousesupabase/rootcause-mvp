@@ -10,6 +10,7 @@ export const USER_SUBCOLLECTIONS = [
   "actions",
   "evaluations",
   "engineState",
+  "cvFiles",
 ] as const;
 export type UserSub = (typeof USER_SUBCOLLECTIONS)[number];
 

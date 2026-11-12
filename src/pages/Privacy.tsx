@@ -4,7 +4,7 @@ import { Logo } from "@/components/shared";
 const sections = [
   {
     h: "What we store",
-    p: "Your account details (name, email, account type), the career profile you complete, the CVs you upload or type (the text taken from an uploaded file; the file itself is not kept), the job applications you log or import (including job descriptions, responses and feedback), and what the platform produces from them: diagnoses, corrective actions and outcome checks.",
+    p: "Your account details (name, email, account type), the career profile you complete, the CVs you upload or type (the uploaded file itself and the text taken from it), the job applications you log or import (including job descriptions, responses and feedback), and what the platform produces from them: diagnoses, corrective actions and outcome checks.",
   },
   {
     h: "Where it is stored",

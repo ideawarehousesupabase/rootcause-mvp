@@ -151,6 +151,8 @@ export interface CvVersion {
   extractedText?: string | null;
   personalStatement: string;
   experience: CvExperience[];
+  /** The uploaded file, kept in pieces in users/{uid}/cvFiles. Missing or null when only text was saved. */
+  storedFile?: { contentType: string; chunks: number } | null;
   /** Missing on CVs saved before projects were read separately. */
   projects?: CvProject[];
   skillsSection: string[];

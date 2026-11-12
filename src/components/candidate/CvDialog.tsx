@@ -40,8 +40,8 @@ export function CvDialog({
   onOpenChange: (o: boolean) => void;
   editing: CvVersion | null;
   existingLabels: string[];
-  /** `fromFile` is true when the text came from a file chosen in this dialog. */
-  onSave: (cv: CvInput, fromFile: boolean) => Promise<void>;
+  /** `file` is the file chosen in this dialog (saved with the CV), or null when none was chosen. */
+  onSave: (cv: CvInput, file: File | null) => Promise<void>;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [label, setLabel] = useState("");
@@ -145,7 +145,7 @@ export function CvDialog({
         projects: projects.map((p) => ({ name: p.name, bullets: p.text.split("\n").map((b) => b.replace(/^\s*[-•*]\s*/, "").trim()).filter(Boolean) })),
         skillsSection: skills.split(/[,\n;]/).map((s) => s.trim()).filter(Boolean),
         ...(extractedText !== undefined ? { extractedText } : {}),
-      }, Boolean(newFile));
+      }, newFile);
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error && err.message.includes("5 MB") ? err.message : "Could not save the CV. Please try again.");
@@ -181,7 +181,7 @@ export function CvDialog({
           {file && (
             <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               File: {file.name} ({Math.max(1, Math.round(file.size / 1024))} KB) —{" "}
-              {newFile ? "text extracted. Only the text is saved, not the file itself." : "name recorded only."}
+              {newFile ? "text extracted. The file is saved with this CV." : editing?.storedFile ? "saved with this CV." : "name recorded only (saved before files were kept)."}
             </p>
           )}
 

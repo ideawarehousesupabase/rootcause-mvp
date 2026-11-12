@@ -49,9 +49,13 @@ service cloud.firestore {
       allow delete: if true;
 
       // The user's data, only in the app's own collections and only while the user record exists.
+      // cvFiles holds uploaded CV files in pieces: each piece must be bytes, at most 700 KB.
       match /{sub}/{docId} {
-        allow read, write: if sub in ['cvVersions', 'applications', 'diagnoses', 'actions', 'evaluations', 'engineState']
+        allow read, delete: if sub in ['cvVersions', 'applications', 'diagnoses', 'actions', 'evaluations', 'engineState', 'cvFiles']
           && exists(userPath(uid));
+        allow create, update: if sub in ['cvVersions', 'applications', 'diagnoses', 'actions', 'evaluations', 'engineState', 'cvFiles']
+          && exists(userPath(uid))
+          && (sub != 'cvFiles' || (request.resource.data.data is bytes && request.resource.data.data.size() <= 700000));
       }
     }
 

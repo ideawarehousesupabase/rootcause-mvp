@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClipboardList, FileText, Link2, MessageSquareQuote, Pencil, Plus, Trash2 } from "lucide-react";
+import { ClipboardList, Download, FileText, Link2, Loader2, MessageSquareQuote, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
   updateApplication,
   updateCvVersion,
 } from "@/services/evidence";
+import { downloadBlob, readCvFile } from "@/services/cvFiles";
 import { advertToInput } from "@/services/jobAdverts";
 import { useCandidateData } from "@/store/CandidateDataContext";
 
@@ -36,6 +37,19 @@ export default function Evidence() {
   const [cvDialog, setCvDialog] = useState<{ open: boolean; editing: CvVersion | null }>({ open: false, editing: null });
   const [appDialog, setAppDialog] = useState<{ open: boolean; editing: Application | null; prefill?: ApplicationInput; jobUrl?: string }>({ open: false, editing: null });
   const [linkOpen, setLinkOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  async function downloadOriginal(cv: CvVersion) {
+    if (!cv.storedFile) return;
+    setDownloading(true);
+    try {
+      downloadBlob(await readCvFile(uid, cv.id, cv.storedFile.contentType), cv.fileName ?? `${cv.label}.pdf`);
+    } catch {
+      toast.error("Couldn't download the file. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
   const [feedbackDialog, setFeedbackDialog] = useState<{ open: boolean; app: Application | null }>({ open: false, app: null });
   const [confirm, setConfirm] = useState<{ kind: "app" | "cv" | "feedback"; id: string; label: string } | null>(null);
 
@@ -165,12 +179,19 @@ export default function Evidence() {
 
               {selectedCv && (
                 <Card className="lg:col-span-3">
-                  <CardHeader>
-                    <CardTitle>{selectedCv.label}</CardTitle>
-                    <CardDescription>
-                      {selectedCv.fileName ? `${selectedCv.fileName} · ` : ""}
-                      {selectedCv.createdAt ? `Added ${formatDate(selectedCv.createdAt.toDate().toISOString())}` : ""}
-                    </CardDescription>
+                  <CardHeader className="flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <CardTitle>{selectedCv.label}</CardTitle>
+                      <CardDescription className="mt-1">
+                        {selectedCv.fileName ? `${selectedCv.fileName} · ` : ""}
+                        {selectedCv.createdAt ? `Added ${formatDate(selectedCv.createdAt.toDate().toISOString())}` : ""}
+                      </CardDescription>
+                    </div>
+                    {selectedCv.storedFile && (
+                      <Button size="sm" variant="outline" onClick={() => downloadOriginal(selectedCv)} disabled={downloading}>
+                        {downloading ? <Loader2 className="animate-spin" /> : <Download />} Download file
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-5 text-sm">
                     <div className="grid grid-cols-3 gap-3 text-center">
@@ -365,10 +386,18 @@ export default function Evidence() {
         onOpenChange={(open) => setCvDialog((s) => ({ ...s, open }))}
         editing={cvDialog.editing}
         existingLabels={cvVersions.map((c) => c.label)}
-        onSave={async (cv, fromFile) => {
-          if (cvDialog.editing) await updateCvVersion(uid, cvDialog.editing.id, cv);
-          else setSelectedCvId(await addCvVersion(uid, cv));
-          toast.success(fromFile ? "CV text extracted, saved and analysed." : "CV saved and analysed.");
+        onSave={async (cv, file) => {
+          const save = (withFile: File | null) =>
+            cvDialog.editing ? updateCvVersion(uid, cvDialog.editing, cv, withFile ?? undefined) : addCvVersion(uid, cv, { file: withFile }).then(setSelectedCvId);
+          try {
+            await save(file);
+            toast.success(file ? "CV and its file saved, and analysed." : "CV saved and analysed.");
+          } catch (err) {
+            // The database's rules don't accept stored files yet: keep the CV, without its file.
+            if (!file || (err as { code?: string })?.code !== "permission-denied") throw err;
+            await save(null);
+            toast.warning("CV saved and analysed, but the file itself couldn't be stored. Ask the administrator to publish the latest Firestore rules.");
+          }
         }}
       />
 

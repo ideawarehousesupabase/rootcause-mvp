@@ -6,7 +6,7 @@ Evidence-based job-search root-cause diagnostics for UK job seekers and employab
 
 RootCause Careers is being built as an AI-powered diagnostic platform. In this MVP, diagnoses come from a deterministic **rule-based engine that simulates the planned AI model** (no AI is used), built on the business plan's five mutually exclusive causes: Targeting, Qualification, Positioning, Evidence, Delivery.
 
-All user data is persisted in **Cloud Firestore**, accounts included: Firebase is used for CRUD only, with no Firebase Authentication. Passwords are stored as salted PBKDF2-SHA256 hashes and checked in the browser. Uploaded CV files are read in the browser and only their text is kept. A Vercel Function, `api/read-job-advert.ts`, reads a job advert link for **Import from job link**; it deploys with the site, so no Firebase paid plan is needed.
+All user data is persisted in **Cloud Firestore**, accounts included: Firebase is used for CRUD only, with no Firebase Authentication. Passwords are stored as salted PBKDF2-SHA256 hashes and checked in the browser. Uploaded CV files are read in the browser; the file itself is also kept in Firestore, split into pieces of up to 700 KB (`users/{uid}/cvFiles`), so no Firebase Storage or paid plan is needed. A Vercel Function, `api/read-job-advert.ts`, reads a job advert link for **Import from job link**; it deploys with the site, so no Firebase paid plan is needed.
 
 ## Stack
 
@@ -42,7 +42,7 @@ npm run build          # type-check + production build
 | Sign-in and accounts | `src/lib/password.ts`, `src/services/users.ts`, `src/services/account.ts`, `src/store/SessionContext.tsx` |
 | Firestore data access | `src/services/` (`evidence.ts`, `diagnosis.ts`, `career.ts`, `sharing.ts`, `paths.ts`) |
 | Real-time data layer | `src/store/CandidateDataContext.tsx` |
-| CV upload and extraction | `src/lib/cvExtract.ts`, `src/components/candidate/CvDialog.tsx` |
+| CV upload and extraction | `src/lib/cvExtract.ts`, `src/lib/cvText.ts`, `src/services/cvFiles.ts` (file kept in Firestore), `src/components/candidate/CvDialog.tsx` |
 | Legacy browser-data import | `src/lib/legacyImport.ts`, `src/services/legacy.ts`, `src/components/LegacyImportDialog.tsx` |
 | Security rules | `firestore.rules`, tests in `src/rules/` |
 | Import from job link | `api/read-job-advert.ts` (the Vercel Function), `api/_lib/` (`portals.ts` link check and known job sites, `fetchPage.ts` safe fetch, `atsApis.ts` Greenhouse/Lever APIs, `jobPosting.ts` advert parser), `src/services/jobAdverts.ts`, `src/components/candidate/JobLinkDialog.tsx` |
@@ -53,7 +53,7 @@ npm run build          # type-check + production build
 Firestore — `accounts/{sha256(email)}` holds each login record (uid, salted password hash); `users/{uid}`, where `uid` is a random id created at registration, holds everything else:
 
 - `users/{uid}` — name, email, account type, organisation, `institutionId` (institution owners), `profile`, `sharing` consent.
-- Subcollections: `cvVersions` (with `extractedText`), `applications`, `diagnoses` (immutable snapshots), `actions`, `evaluations`, `engineState/calibration`.
+- Subcollections: `cvVersions` (with `extractedText` and `storedFile`), `cvFiles` (the uploaded file in pieces, `{cvId}_{index}`), `applications`, `diagnoses` (immutable snapshots), `actions`, `evaluations`, `engineState/calibration`.
 - `institutions/{id}` (owner, name, join code) and `institutions/{id}/members/{candidateUid}` — the summary a candidate consented to share.
 - `joinCodes/{code}` — get-only lookup.
 Without Firebase Authentication the rules cannot tie a request to a user. They block listing of every top-level collection (records are reached only by exact id), never let a login record be overwritten, keep identity fields unchangeable, accept only the app's own collections, and accept a member summary only while the candidate's record names that institution. Anyone who knows a user's email address can still reach that user's records.

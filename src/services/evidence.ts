@@ -1,7 +1,8 @@
-import { deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import type { Application, ApplicationInput, ApplicationStatus, CvExperience, CvProject, CvVersion } from "@/data/types";
 import { analyseCv, analyseJd } from "@/engine";
 import { requireDb } from "@/lib/firebase";
+import { addFileDeletes, addFileWrites } from "./cvFiles";
 import { chunkedBatch, subCol, subDoc } from "./paths";
 
 // ---------- CV versions ----------
@@ -31,21 +32,39 @@ const cleanCv = (cv: CvInput) => ({
   ...(cv.extractedText !== undefined ? { extractedText: cv.extractedText } : {}),
 });
 
-// Only the CV's text is stored; uploaded files are read in the browser and not kept.
-export async function addCvVersion(uid: string, cv: CvInput, opts: { id?: string } = {}) {
+// The CV's text and structure are stored on the CV version; an uploaded file is also kept,
+// in pieces, in the cvFiles collection (see cvFiles.ts). Both are written in one batch, so the
+// CV and its file are saved, or fail, together.
+export async function addCvVersion(uid: string, cv: CvInput, opts: { id?: string; file?: File | null } = {}) {
   const ref = opts.id ? subDoc(uid, "cvVersions", opts.id) : doc(subCol(uid, "cvVersions"));
   const clean = cleanCv(cv);
-  await setDoc(ref, { ...clean, analysis: analyseCv(clean), createdAt: serverTimestamp() });
+  const batch = writeBatch(requireDb());
+  const storedFile = opts.file ? await addFileWrites(batch, uid, ref.id, opts.file) : null;
+  batch.set(ref, { ...clean, storedFile, analysis: analyseCv(clean), createdAt: serverTimestamp() });
+  await batch.commit();
   return ref.id;
 }
 
-export async function updateCvVersion(uid: string, id: string, cv: CvInput) {
+/** `file` replaces the stored file; `null` removes it; leaving it out keeps the current one. */
+export async function updateCvVersion(uid: string, existing: CvVersion, cv: CvInput, file?: File | null) {
   const clean = cleanCv(cv);
-  await updateDoc(subDoc(uid, "cvVersions", id), { ...clean, analysis: analyseCv(clean) });
+  const batch = writeBatch(requireDb());
+  const previous = existing.storedFile?.chunks ?? 0;
+  let storedFile = existing.storedFile ?? null;
+  if (file) storedFile = await addFileWrites(batch, uid, existing.id, file, previous);
+  else if (file === null && previous) {
+    addFileDeletes(batch, uid, existing.id, previous);
+    storedFile = null;
+  }
+  batch.update(subDoc(uid, "cvVersions", existing.id), { ...clean, storedFile, analysis: analyseCv(clean) });
+  await batch.commit();
 }
 
 export async function deleteCvVersion(uid: string, cv: CvVersion) {
-  await deleteDoc(subDoc(uid, "cvVersions", cv.id));
+  const batch = writeBatch(requireDb());
+  addFileDeletes(batch, uid, cv.id, cv.storedFile?.chunks ?? 0);
+  batch.delete(subDoc(uid, "cvVersions", cv.id));
+  await batch.commit();
 }
 
 // ---------- Applications ----------
