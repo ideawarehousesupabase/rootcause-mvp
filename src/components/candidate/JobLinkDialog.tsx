@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError } from "@/components/shared";
-import { checkJobUrl, PORTALS } from "../../../functions/src/portals";
+import { checkJobUrl } from "../../../api/_lib/portals";
 import { advertErrorMessage, readJobAdvert, type JobAdvert } from "@/services/jobAdverts";
 
 /** Step 1 of "Import from job link": read the advert. The caller then shows the pre-filled application form. */
@@ -68,7 +68,7 @@ export function JobLinkDialog({
             <Input id="job-url" type="url" inputMode="url" placeholder="https://www.reed.co.uk/jobs/…" value={url} onChange={(e) => setUrl(e.target.value)} autoFocus />
             <FieldError message={error} />
           </div>
-          <p className="text-xs text-muted-foreground">Supported: {PORTALS.map((p) => p.name).join(", ")}.</p>
+          <p className="text-xs text-muted-foreground">Works with most job boards and company career pages. Use the link to the advert itself, not a list of jobs. Some sites, such as Indeed, block automatic reading.</p>
           {!hasCv && (
             <Alert variant="info">
               <AlertDescription>

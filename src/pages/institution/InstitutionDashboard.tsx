@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { onSnapshot } from "firebase/firestore";
-import { Activity, Award, CalendarCheck, Copy, Download, Eye, Info, Printer, RefreshCw, Search, Send, UserMinus, Users } from "lucide-react";
+import { Activity, Award, CalendarCheck, Copy, Eye, Info, Printer, RefreshCw, Search, Send, UserMinus, Users } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,7 +17,6 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ActionStatusBadge, CauseBadge, EmptyState, KpiCard, LoadingState, PageHeader } from "@/components/shared";
 import { CAUSE_CLASSES, SEGMENTS, type Institution, type MemberSummary } from "@/data/types";
 import { CATEGORY_COLORS, CHART_COLORS } from "@/lib/chartColors";
-import { downloadText } from "@/lib/csv";
 import { formatDate } from "@/lib/utils";
 import { institutionRef, membersCol, withId } from "@/services/paths";
 import { regenerateJoinCode, removeMember } from "@/services/sharing";
@@ -141,7 +140,7 @@ export default function InstitutionDashboard() {
             <CandidateInsights members={members} onRemove={(uid) => removeMember(institution.id, uid)} />
           </TabsContent>
           <TabsContent value="reports">
-            <Reports totals={totals} barriers={barriers} members={members} name={institution.name} />
+            <Reports totals={totals} barriers={barriers} members={members} />
           </TabsContent>
         </Tabs>
       )}
@@ -385,7 +384,7 @@ function CandidateInsights({ members, onRemove }: { members: Member[]; onRemove:
   );
 }
 
-function Reports({ totals, barriers, members, name }: { totals: Totals; barriers: Barrier[]; members: Member[]; name: string }) {
+function Reports({ totals, barriers, members }: { totals: Totals; barriers: Barrier[]; members: Member[] }) {
   const primaryShare = barriers.filter((b) => b.primary > 0).map((b) => ({ name: b.category, value: b.primary }));
   const monthMap = new Map<string, { key: string; month: string; applications: number; responses: number; interviews: number; offers: number }>();
   members.forEach((m) =>
@@ -397,34 +396,6 @@ function Reports({ totals, barriers, members, name }: { totals: Totals; barriers
   const monthly = [...monthMap.values()].sort((a, b) => a.key.localeCompare(b.key));
   const verdicts = ["corroborated", "weakened", "inconclusive", "collecting"].map((v) => ({ v, n: members.filter((m) => m.latestVerdict === v).length }));
 
-  function exportCsv() {
-    const header = "candidate,segment,target_role,applications,decided,responses,interviews,offers,response_rate,interview_rate,primary_cause,primary_confidence,secondary_cause,actions_completed,actions_total,latest_verdict";
-    const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-    const lines = members.map((m) =>
-      [
-        m.name,
-        m.segment,
-        m.targetRole,
-        m.funnel.applications,
-        m.funnel.decided,
-        m.funnel.responses,
-        m.funnel.interviews,
-        m.funnel.offers,
-        m.funnel.responseRate.toFixed(3),
-        m.funnel.interviewRate.toFixed(3),
-        m.primaryCause ?? "",
-        m.primaryConfidence?.toFixed(2) ?? "",
-        m.secondaryCause ?? "",
-        m.actionsCompleted,
-        m.actionsTotal,
-        m.latestVerdict ?? "",
-      ]
-        .map((v) => esc(String(v)))
-        .join(","),
-    );
-    downloadText(`${name.replace(/\W+/g, "_")}_cohort_report.csv`, [header, ...lines].join("\n"));
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -432,9 +403,6 @@ function Reports({ totals, barriers, members, name }: { totals: Totals; barriers
           {totals.candidates} candidates · {totals.applications} applications · live data
         </p>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportCsv}>
-            <Download /> Export CSV
-          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer /> Print
           </Button>

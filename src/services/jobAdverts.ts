@@ -1,11 +1,10 @@
-import { httpsCallable } from "firebase/functions";
 import type { ApplicationInput, CvVersion } from "@/data/types";
-import { requireFunctions } from "@/lib/firebase";
 import { guessRoleFamily, guessSeniority, looksLikeGraduateScheme } from "@/lib/jobGuess";
 import { todayLocal } from "@/lib/utils";
 
-// "Import from job link": the readJobAdvert Cloud Function reads the advert page;
-// the result pre-fills a new application, which the user checks and saves.
+// "Import from job link": the /api/read-job-advert function (api/read-job-advert.ts, on Vercel)
+// reads the advert page; the result pre-fills a new application, which the user checks and saves
+// to Firestore.
 
 export interface JobAdvert {
   url: string;
@@ -19,9 +18,30 @@ export interface JobAdvert {
   method: "structured-data" | "page-tags";
 }
 
+class AdvertError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export async function readJobAdvert(url: string): Promise<JobAdvert> {
-  const call = httpsCallable<{ url: string }, JobAdvert>(requireFunctions(), "readJobAdvert", { timeout: 35_000 });
-  return (await call({ url: url.trim() })).data;
+  let res: Response;
+  try {
+    res = await fetch("/api/read-job-advert", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: url.trim() }),
+      signal: AbortSignal.timeout(35_000),
+    });
+  } catch (err) {
+    throw new AdvertError((err as Error)?.name === "TimeoutError" ? "timeout" : "offline", "");
+  }
+  const body = (await res.json().catch(() => null)) as (JobAdvert & { error?: { code: string; message: string } }) | null;
+  if (!res.ok || !body || body.error) throw new AdvertError(body?.error?.code ?? "internal", body?.error?.message ?? "");
+  return body;
 }
 
 export function advertToInput(advert: JobAdvert, cvVersions: CvVersion[]): ApplicationInput {
@@ -44,20 +64,12 @@ export function advertToInput(advert: JobAdvert, cvVersions: CvVersion[]): Appli
   };
 }
 
-/** A friendly message, and whether the user should fill the details in by hand. */
+/** A friendly message for a failed read. */
 export function advertErrorMessage(err: unknown): string {
-  const code = String((err as { code?: string })?.code ?? "").replace(/^functions\//, "");
-  const message = (err as { message?: string })?.message ?? "";
-  switch (code) {
-    case "invalid-argument":
-    case "permission-denied":
-    case "not-found":
-    case "unavailable":
-    case "out-of-range":
-      return message || "The advert could not be read.";
-    case "deadline-exceeded":
-      return "The advert took too long to read. Try again, or fill in the details by hand.";
-    default:
-      return "The advert could not be read right now. Fill in the details by hand, or try again later.";
-  }
+  const code = err instanceof AdvertError ? err.code : "";
+  const message = err instanceof AdvertError ? err.message : "";
+  if (code === "timeout") return "The advert took too long to read. Try again, or fill in the details by hand.";
+  if (code === "offline") return "Couldn't reach the advert reader. Check your connection and try again.";
+  if (message && code !== "internal") return message;
+  return "The advert could not be read right now. Fill in the details by hand, or try again later.";
 }

@@ -6,30 +6,30 @@ Evidence-based job-search root-cause diagnostics for UK job seekers and employab
 
 RootCause Careers is being built as an AI-powered diagnostic platform. In this MVP, diagnoses come from a deterministic **rule-based engine that simulates the planned AI model** (no AI is used), built on the business plan's five mutually exclusive causes: Targeting, Qualification, Positioning, Evidence, Delivery.
 
-All user data is persisted in **Cloud Firestore**, accounts included: Firebase is used for CRUD only, with no Firebase Authentication. Passwords are stored as salted PBKDF2-SHA256 hashes and checked in the browser. Uploaded CV files are read in the browser and only their text is kept. One Cloud Function, `readJobAdvert` (`functions/`), reads a job advert link for **Import from job link** on the Application Tracker.
+All user data is persisted in **Cloud Firestore**, accounts included: Firebase is used for CRUD only, with no Firebase Authentication. Passwords are stored as salted PBKDF2-SHA256 hashes and checked in the browser. Uploaded CV files are read in the browser and only their text is kept. A Vercel Function, `api/read-job-advert.ts`, reads a job advert link for **Import from job link**; it deploys with the site, so no Firebase paid plan is needed.
 
 ## Stack
 
-React + TypeScript (Vite), Tailwind, shadcn/ui, React Router, Recharts, Firebase (Firestore only), PapaParse, pdf.js and Mammoth (CV text extraction in the browser), Zod, Vitest, `@firebase/rules-unit-testing`.
+React + TypeScript (Vite), Tailwind, shadcn/ui, React Router, Recharts, Firebase (Firestore only), Vercel Functions (job advert reader), pdf.js and Mammoth (CV text extraction in the browser), Zod, Vitest, `@firebase/rules-unit-testing`.
 
 ## Run against a real Firebase project
 
-1. In the Firebase console for the project, create a **Firestore** database and upgrade to the **Blaze** plan (Cloud Functions need it; the free allowance covers MVP use).
+1. In the Firebase console for the project, create a **Firestore** database (the free Spark plan is enough).
 2. `cp .env.example .env` and fill in the `VITE_FIREBASE_*` values. `.env` is git-ignored — never commit it.
-3. `npm --prefix functions install`, then deploy the rules and the function: `npx firebase deploy --only firestore:rules,functions`.
-4. `npm install && npm run dev`.
+3. Deploy the rules: `npx firebase deploy --only firestore:rules` (or paste `firestore.rules` in the console).
+4. `npm install && npm run dev`. In development the dev server also serves `/api/read-job-advert`; on Vercel the `api/` folder is deployed as a function automatically.
 
 ## Run locally against the Firebase emulators (no Firebase project needed)
 
 ```bash
-npm run emulators      # builds functions/, then Firestore on 8181 and Functions on 5401
+npm run emulators      # Firestore on 8181
 npm run dev:emulator   # uses .env.emulator (demo-rootcause project)
 ```
 
 ## Tests
 
 ```bash
-npm test               # engine, CSV, CV extraction, password, legacy-import and job-advert reader tests
+npm test               # engine, CV extraction, password, legacy-import and job-advert reader tests
 npm run test:rules     # Firestore security rules (starts the emulator itself)
 npm run build          # type-check + production build
 ```
@@ -45,8 +45,8 @@ npm run build          # type-check + production build
 | CV upload and extraction | `src/lib/cvExtract.ts`, `src/components/candidate/CvDialog.tsx` |
 | Legacy browser-data import | `src/lib/legacyImport.ts`, `src/services/legacy.ts`, `src/components/LegacyImportDialog.tsx` |
 | Security rules | `firestore.rules`, tests in `src/rules/` |
-| Import from job link | `functions/src/` (`portals.ts` supported sites, `fetchPage.ts` safe fetch, `atsApis.ts` Greenhouse/Lever APIs, `jobPosting.ts` advert parser), `src/services/jobAdverts.ts`, `src/components/candidate/JobLinkDialog.tsx` |
-| Sample data | `public/templates/` (fictional worked example for the sample CV/CSV buttons) |
+| Import from job link | `api/read-job-advert.ts` (the Vercel Function), `api/_lib/` (`portals.ts` link check and known job sites, `fetchPage.ts` safe fetch, `atsApis.ts` Greenhouse/Lever APIs, `jobPosting.ts` advert parser), `src/services/jobAdverts.ts`, `src/components/candidate/JobLinkDialog.tsx` |
+| Sample data | `public/templates/` (fictional sample CV; the sample applications are used by the engine tests) |
 
 ## Data model
 
@@ -61,7 +61,7 @@ Without Firebase Authentication the rules cannot tie a request to a user. They b
 ## Key rules
 
 - An application with no reply after **30 days** counts as "No response"; under 30 days it is "Pending" and excluded from rates.
-- A diagnosis needs a profile, a CV with ≥ 3 bullets and ≥ 10 decided applications. Primary cause ≥ 0.50, secondary ≥ 0.35 (monitored, not actioned).
+- A diagnosis needs a profile, a CV with ≥ 3 bullets and ≥ 3 decided applications. Primary cause ≥ 0.50, secondary ≥ 0.35 (monitored, not actioned).
 - Only primary-cause actions are active; secondary actions are queued until the first change is measured.
 - When all active actions are complete, outcomes after that date are compared with the 90 days before it (or the 10 most recent earlier applications) — verdicts: collecting, corroborated, weakened, inconclusive. Verdicts adjust that candidate's class multipliers.
 
@@ -71,4 +71,4 @@ Login records made by earlier versions (`accounts/*`) keep working with their or
 
 ## Import from job link
 
-On the Application Tracker, **Import from job link** takes the link to one public job advert. The `readJobAdvert` function (region `europe-west2`) accepts only supported sites (Reed, Totaljobs, CV-Library, Guardian Jobs, NHS Jobs, Civil Service Jobs, Greenhouse, Lever, Workable, Ashby, SmartRecruiters, LinkedIn, Indeed), refuses internal network addresses, follows at most four redirects, and stops at 10 seconds or 3 MB. It reads Greenhouse and Lever adverts through their public job APIs, other pages through their schema.org `JobPosting` data, NHS Jobs through its page layout, and otherwise the page's title and description tags. It returns only the job fields and stores nothing; the user checks the pre-filled application and saves it to Firestore with `source: "link"` and the `jobUrl`. Sites that block automated reading (often Indeed, sometimes LinkedIn, Totaljobs) get a "Fill in by hand" fallback.
+Applications are added by hand or with **Import from job link** (Application Tracker and Evidence Capture); CSV import and export have been removed. Import from job link takes the link to one public job advert on any website. `POST /api/read-job-advert` accepts only public web addresses (no IP addresses or local names), checks every address the site resolves to and refuses internal networks, follows at most four redirects, and stops at 10 seconds or 3 MB. It reads Greenhouse and Lever adverts through their public job APIs, other pages through their schema.org `JobPosting` data, NHS Jobs through its page layout, and otherwise the page's title and description tags (pages that list many jobs are refused). It returns only the job fields and stores nothing; the user checks the pre-filled application and saves it to Firestore with `source: "link"` and the `jobUrl`. Sites that block automated reading (often Indeed, sometimes LinkedIn, Totaljobs) get a "Fill in by hand" fallback.

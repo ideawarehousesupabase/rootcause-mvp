@@ -7,7 +7,7 @@ const FAMILY_KEYWORDS: [RoleFamily, RegExp][] = [
   ["Software Engineering", /\b(software|developer|programmer|front[- ]?end|back[- ]?end|full[- ]?stack|devops|sre|mobile engineer|web engineer)\b/i],
   ["Data Analysis", /\b(data analyst|data scientist|insight|analytics|bi analyst|business intelligence|reporting analyst|data engineer)\b/i],
   ["Business Analysis", /\b(business analyst|business analysis|systems analyst|process analyst|requirements analyst)\b/i],
-  ["Project Management", /\b(project manager|programme manager|project coordinator|pmo|scrum master|delivery manager|project officer)\b/i],
+  ["Project Management", /\b(project manag(er|ement)|programme manag(er|ement)|program manag(er|ement)|project coordinator|pmo|scrum master|delivery manager|project officer)\b/i],
   ["Finance and Accounting", /\b(accountant|accounting|finance|financial|audit|tax|payroll|fp&a|treasury|bookkeep|credit control|investment)\b/i],
   ["Marketing", /\b(marketing|seo|content|social media|brand|digital marketing|campaign|communications|pr )\b/i],
   ["HR", /\b(hr|human resources|people partner|recruiter|recruitment|talent|learning and development|l&d)\b/i],

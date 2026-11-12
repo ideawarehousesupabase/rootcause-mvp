@@ -8,6 +8,7 @@ describe("job advert guesses", () => {
     expect(guessRoleFamily("Data Analyst")).toBe("Data Analysis");
     expect(guessRoleFamily("Graduate Software Engineer")).toBe("Software Engineering");
     expect(guessRoleFamily("Associate", "You will run digital marketing campaigns")).toBe("Marketing");
+    expect(guessRoleFamily("Project Management Intern")).toBe("Project Management");
     expect(guessRoleFamily("Team Member")).toBe("Other");
   });
 

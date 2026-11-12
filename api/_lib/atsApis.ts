@@ -1,4 +1,4 @@
-import { htmlToText, type JobAdvert } from "./jobPosting";
+import { htmlToText, type JobAdvert } from "./jobPosting.js";
 
 // Some applicant tracking systems publish each advert through an official public API.
 // Where a link belongs to one of them, that API is read instead of the page.

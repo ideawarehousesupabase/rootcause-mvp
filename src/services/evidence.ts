@@ -1,8 +1,7 @@
-import { deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, type WriteBatch } from "firebase/firestore";
+import { deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import type { Application, ApplicationInput, ApplicationStatus, CvExperience, CvProject, CvVersion } from "@/data/types";
 import { analyseCv, analyseJd } from "@/engine";
 import { requireDb } from "@/lib/firebase";
-import { uid as makeId } from "@/lib/utils";
 import { chunkedBatch, subCol, subDoc } from "./paths";
 
 // ---------- CV versions ----------
@@ -119,44 +118,7 @@ export async function bulkSetStatus(uid: string, apps: Application[], status: Ap
   );
 }
 
-/** Import validated CSV rows. New CV labels become empty CV versions the user completes later. */
-export async function importApplications(
-  uid: string,
-  rows: { input: Omit<ApplicationInput, "cvVersionId">; cvLabel: string }[],
-  existingCvs: Pick<CvVersion, "id" | "label">[],
-) {
-  const db = requireDb();
-  const batchId = makeId("import");
-  const cvIds = new Map(existingCvs.map((c) => [c.label.trim().toLowerCase(), c.id]));
-  const newCvs: { id: string; label: string }[] = [];
-  for (const r of rows) {
-    const key = r.cvLabel.trim().toLowerCase();
-    if (!cvIds.has(key)) {
-      const id = doc(subCol(uid, "cvVersions")).id;
-      cvIds.set(key, id);
-      newCvs.push({ id, label: r.cvLabel.trim() });
-    }
-  }
-  const ops = [
-    ...newCvs.map((cv) => (b: WriteBatch) => {
-      const empty = { label: cv.label, fileName: null, fileSize: null, personalStatement: "", experience: [], projects: [], skillsSection: [] };
-      b.set(subDoc(uid, "cvVersions", cv.id), { ...empty, file: null, analysis: analyseCv(empty), createdAt: serverTimestamp() });
-    }),
-    ...rows.map((r) => (b: WriteBatch) => {
-      const input = { ...r.input, cvVersionId: cvIds.get(r.cvLabel.trim().toLowerCase())! };
-      b.set(doc(subCol(uid, "applications")), {
-        ...appPayload(input),
-        source: "csv",
-        importBatchId: batchId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }),
-  ];
-  await chunkedBatch(db, ops);
-  return { batchId, imported: rows.length, newCvLabels: newCvs.map((c) => c.label) };
-}
-
+/** Removes applications imported together by CSV (older imports only; CSV import has been removed). */
 export async function undoImport(uid: string, batchId: string) {
   const snap = await getDocs(query(subCol(uid, "applications"), where("importBatchId", "==", batchId)));
   await chunkedBatch(requireDb(), snap.docs.map((d) => (b) => b.delete(d.ref)));

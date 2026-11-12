@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ApplicationFormDialog, emptyInput } from "@/components/candidate/ApplicationDialogs";
 import { ActionStatusBadge, CauseBadge, ConfidenceMeter, EngineBadge, KpiCard, LoadingState, PageHeader, PriorityBadge, StatusBadge } from "@/components/shared";
 import { daysBetween, derivedState } from "@/engine";
+import { MIN_DECIDED_TO_RUN } from "@/engine/config";
 import { formatDate, todayLocal } from "@/lib/utils";
 import { addApplication } from "@/services/evidence";
 import { useCandidateData } from "@/store/CandidateDataContext";
@@ -27,7 +28,7 @@ export default function Dashboard() {
   const onboarding = [
     { label: "Complete your profile", done: Boolean(user.profile?.targetRoleFamilies.length), to: "/app/profile" },
     { label: "Add your CV (at least 3 experience bullets)", done: cvVersions.some((c) => c.analysis.bulletCount >= 3), to: "/app/evidence" },
-    { label: "Add or import at least 10 decided applications", done: f.decided >= 10, to: "/app/evidence" },
+    { label: `Add at least ${MIN_DECIDED_TO_RUN} decided applications`, done: f.decided >= MIN_DECIDED_TO_RUN, to: "/app/applications" },
     { label: "Run your first diagnosis", done: Boolean(latestDiagnosis), to: "/app/diagnostics" },
   ];
   const onboardingDone = onboarding.every((o) => o.done);

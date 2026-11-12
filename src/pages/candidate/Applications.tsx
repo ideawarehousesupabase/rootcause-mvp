@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ClipboardList, Download, Eye, Link2, MessageSquarePlus, Pencil, Plus, Search, Trash2, Undo2, Upload } from "lucide-react";
+import { ClipboardList, Eye, Link2, MessageSquarePlus, Pencil, Plus, Search, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,13 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApplicationDetailsDialog, ApplicationFormDialog, emptyInput, FeedbackDialog, toInput } from "@/components/candidate/ApplicationDialogs";
-import { CsvImportDialog } from "@/components/candidate/CsvImportDialog";
 import { JobLinkDialog } from "@/components/candidate/JobLinkDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState, LoadingState, PageHeader } from "@/components/shared";
 import { APPLICATION_STATUSES, ROLE_FAMILIES, type Application, type ApplicationInput, type ApplicationStatus } from "@/data/types";
 import { derivedState } from "@/engine";
-import { applicationsToCsv, downloadText } from "@/lib/csv";
 import { cn, formatDate, todayLocal } from "@/lib/utils";
 import { addApplication, bulkSetStatus, deleteApplication, deleteApplications, patchApplication, setStatus, undoImport, updateApplication } from "@/services/evidence";
 import { advertToInput } from "@/services/jobAdverts";
@@ -42,7 +40,6 @@ export default function Applications() {
   const [source, setSource] = useState(ALL);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState<{ open: boolean; editing: Application | null; prefill?: ApplicationInput; jobUrl?: string }>({ open: false, editing: null });
-  const [importOpen, setImportOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [feedbackFor, setFeedbackFor] = useState<Application | null>(null);
   const [toDelete, setToDelete] = useState<Application[] | null>(null);
@@ -95,12 +92,6 @@ export default function Applications() {
         description={`${funnel.applications} applications · ${funnel.decided} decided · ${funnel.responses} responses · ${funnel.interviews} interviews · ${funnel.offers} offer${funnel.offers === 1 ? "" : "s"}. Changes update every page instantly.`}
         actions={
           <>
-            <Button variant="outline" onClick={() => downloadText(`applications-${today}.csv`, applicationsToCsv(rows, cvLabel))} disabled={!rows.length}>
-              <Download /> Export CSV
-            </Button>
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
-              <Upload /> Import CSV
-            </Button>
             <Button variant="outline" onClick={() => setLinkOpen(true)}>
               <Link2 /> Import from job link
             </Button>
@@ -185,11 +176,16 @@ export default function Applications() {
               <EmptyState
                 icon={ClipboardList}
                 title="No applications yet"
-                description="Add your applications or import them from a spreadsheet."
+                description="Add an application by hand, or paste the link to the job advert and the details are filled in for you."
                 action={
-                  <Button onClick={() => setImportOpen(true)}>
-                    <Upload /> Import CSV
-                  </Button>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button variant="outline" onClick={() => setLinkOpen(true)}>
+                      <Link2 /> Import from job link
+                    </Button>
+                    <Button onClick={() => setForm({ open: true, editing: null })}>
+                      <Plus /> Add application
+                    </Button>
+                  </div>
                 }
               />
             </div>
@@ -360,7 +356,6 @@ export default function Applications() {
         }}
       />
 
-      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} uid={uid} cvVersions={cvVersions} applications={applications} />
 
       <FeedbackDialog
         open={!!feedbackFor}

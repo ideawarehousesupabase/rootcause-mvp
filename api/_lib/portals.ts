@@ -1,5 +1,6 @@
-// Job portals whose advert pages can be read. Shared by the Cloud Function (which enforces it)
-// and the web app (which checks a link before sending it).
+// Job advert links. Any public job site can be read; the sites named here get a friendlier name
+// and, for those that often block automated reading, a clearer message when they do.
+// Shared by the advert reader (api/read-job-advert.ts) and the web app, which checks a link before sending it.
 
 export interface Portal {
   name: string;
@@ -25,12 +26,18 @@ export const PORTALS: Portal[] = [
   { name: "Indeed", domains: ["indeed.com", "indeed.co.uk"], mayBlock: true },
 ];
 
+/** A known job site, or null for any other site. */
 export function portalFor(hostname: string): Portal | null {
   const host = hostname.toLowerCase().replace(/\.$/, "");
   return PORTALS.find((p) => p.domains.some((d) => host === d || host.endsWith(`.${d}`))) ?? null;
 }
 
-/** A supported advert link, or a reason it can't be used. */
+/** The site's own name for a link that isn't a known job site, e.g. "app.webbtree.com" → "webbtree.com". */
+function siteName(hostname: string): string {
+  return hostname.toLowerCase().replace(/^www\./, "").replace(/^(app|jobs|careers|apply|boards)\./, "");
+}
+
+/** A readable advert link, or a reason it can't be used. */
 export function checkJobUrl(raw: string): { url: URL; portal: Portal } | { error: string } {
   let url: URL;
   try {
@@ -40,7 +47,11 @@ export function checkJobUrl(raw: string): { url: URL; portal: Portal } | { error
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") return { error: "Enter a web link starting with https://" };
   if (url.username || url.password || (url.port && url.port !== "80" && url.port !== "443")) return { error: "That link can't be read." };
-  const portal = portalFor(url.hostname);
-  if (!portal) return { error: "That site isn't supported yet. Add the application by hand instead." };
+  // Public websites only: no IP addresses, no local or single-word host names.
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (!host.includes(".") || /^[\d.]+$/.test(host) || host.includes(":") || host.startsWith("[") || /\.(local|localhost|internal|lan|home|corp)$/.test(host)) {
+    return { error: "Enter the link to a job advert on a public website." };
+  }
+  const portal = portalFor(host) ?? { name: siteName(host), domains: [host] };
   return { url, portal };
 }

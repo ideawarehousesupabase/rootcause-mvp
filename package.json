@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude \"**/*.rules.test.ts\"",
-    "emulators": "npm --prefix functions run build && firebase emulators:start --only firestore,functions --project demo-rootcause",
+    "emulators": "firebase emulators:start --only firestore --project demo-rootcause",
     "dev:emulator": "vite --mode emulator",
     "test:rules": "firebase emulators:exec --only firestore --project demo-rootcause \"vitest run src/rules\""
   },

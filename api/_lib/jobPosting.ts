@@ -160,5 +160,7 @@ export function parseJobAdvert(html: string, portalName?: string): JobAdvert | n
   if (!title || description.length < 80) return null;
   // Sign-in walls and bot checks are not adverts.
   if (/sign ?in|log ?in|access denied|just a moment|captcha|are you a robot|security check/i.test(title)) return null;
+  // Nor are pages listing many jobs.
+  if (/careers and jobs|open positions|all (open )?jobs|job openings|current vacancies|search jobs|jobs at /i.test(`${title} ${description}`)) return null;
   return { title, employer: "", location: "", description, datePosted: null, employmentType: null, method: "page-tags" };
 }

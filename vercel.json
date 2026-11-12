@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/read-job-advert.ts": { "maxDuration": 30 }
+  }
+}

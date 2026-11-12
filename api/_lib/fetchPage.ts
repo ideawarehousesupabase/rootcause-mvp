@@ -1,6 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { checkJobUrl, type Portal } from "./portals";
+import { checkJobUrl, type Portal } from "./portals.js";
 
 // Fetches one advert page (or an advert API response) safely: supported portals only, never internal addresses,
 // a few redirects at most, and a time and size limit.

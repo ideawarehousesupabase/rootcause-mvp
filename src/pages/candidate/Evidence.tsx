@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, MessageSquareQuote, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { ClipboardList, FileText, Link2, MessageSquareQuote, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,11 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApplicationFormDialog, emptyInput, FeedbackDialog, JdSummary, toInput } from "@/components/candidate/ApplicationDialogs";
-import { CsvImportDialog } from "@/components/candidate/CsvImportDialog";
 import { CvDialog } from "@/components/candidate/CvDialog";
+import { JobLinkDialog } from "@/components/candidate/JobLinkDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState, LoadingState, PageHeader, StatusBadge } from "@/components/shared";
-import type { Application, CvVersion } from "@/data/types";
+import type { Application, ApplicationInput, CvVersion } from "@/data/types";
 import { derivedState } from "@/engine";
 import { cn, formatDate } from "@/lib/utils";
 import {
@@ -24,6 +24,7 @@ import {
   updateApplication,
   updateCvVersion,
 } from "@/services/evidence";
+import { advertToInput } from "@/services/jobAdverts";
 import { useCandidateData } from "@/store/CandidateDataContext";
 
 const hasFeedback = (a: Application) => Boolean(a.recruiterResponse || a.feedback || a.interviewStage !== "None");
@@ -33,8 +34,8 @@ export default function Evidence() {
   const { uid, user, loading, cvVersions, applications, today, cvLabel } = useCandidateData();
   const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
   const [cvDialog, setCvDialog] = useState<{ open: boolean; editing: CvVersion | null }>({ open: false, editing: null });
-  const [appDialog, setAppDialog] = useState<{ open: boolean; editing: Application | null }>({ open: false, editing: null });
-  const [importOpen, setImportOpen] = useState(false);
+  const [appDialog, setAppDialog] = useState<{ open: boolean; editing: Application | null; prefill?: ApplicationInput; jobUrl?: string }>({ open: false, editing: null });
+  const [linkOpen, setLinkOpen] = useState(false);
   const [feedbackDialog, setFeedbackDialog] = useState<{ open: boolean; app: Application | null }>({ open: false, app: null });
   const [confirm, setConfirm] = useState<{ kind: "app" | "cv" | "feedback"; id: string; label: string } | null>(null);
 
@@ -241,11 +242,11 @@ export default function Evidence() {
             <CardHeader className="flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle>Job application evidence</CardTitle>
-                <CardDescription className="mt-1">Add applications one at a time, or import a CSV.</CardDescription>
+                <CardDescription className="mt-1">Add applications by hand, or from the link to the job advert.</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-                  <Upload /> Import CSV
+                <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)}>
+                  <Link2 /> Import from job link
                 </Button>
                 <Button size="sm" onClick={() => setAppDialog({ open: true, editing: null })}>
                   <Plus /> Add application
@@ -256,9 +257,9 @@ export default function Evidence() {
               {applications.length === 0 ? (
                 <div className="px-5">
                   <EmptyState
-                    icon={Upload}
+                    icon={ClipboardList}
                     title="No applications yet"
-                    description="Import a CSV of past applications or add them manually. At least 10 decided applications are needed for a diagnosis."
+                    description="Add your applications by hand or from a job advert link. At least 3 decided applications are needed for a diagnosis."
                   />
                 </div>
               ) : (
@@ -375,16 +376,29 @@ export default function Evidence() {
         open={appDialog.open}
         onOpenChange={(open) => setAppDialog((s) => ({ ...s, open }))}
         title={appDialog.editing ? "Edit application" : "Add application"}
-        initial={appDialog.editing ? toInput(appDialog.editing) : emptyInput(cvVersions, user.profile?.targetRoleFamilies[0])}
+        initial={appDialog.editing ? toInput(appDialog.editing) : (appDialog.prefill ?? emptyInput(cvVersions, user.profile?.targetRoleFamilies[0]))}
         cvVersions={cvVersions}
         onSubmit={async (input) => {
           if (appDialog.editing) await updateApplication(uid, appDialog.editing.id, input);
-          else await addApplication(uid, input);
+          else await addApplication(uid, input, { jobUrl: appDialog.jobUrl });
           toast.success("Application saved.");
         }}
       />
 
-      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} uid={uid} cvVersions={cvVersions} applications={applications} />
+      <JobLinkDialog
+        open={linkOpen}
+        onOpenChange={setLinkOpen}
+        hasCv={cvVersions.length > 0}
+        onRead={(advert) => {
+          setLinkOpen(false);
+          setAppDialog({ open: true, editing: null, prefill: advertToInput(advert, cvVersions), jobUrl: advert.url });
+          toast.success(`Read the advert from ${advert.portal}. Check the details, then save.`);
+        }}
+        onManual={(url) => {
+          setLinkOpen(false);
+          setAppDialog({ open: true, editing: null, jobUrl: url });
+        }}
+      />
 
       <FeedbackDialog
         open={feedbackDialog.open}

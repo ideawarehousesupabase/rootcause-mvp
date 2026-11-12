@@ -3,6 +3,7 @@ import { advertApiFor } from "./atsApis";
 import { isPrivateAddress } from "./fetchPage";
 import { htmlToText, parseJobAdvert } from "./jobPosting";
 import { checkJobUrl, portalFor } from "./portals";
+import { POST } from "../read-job-advert";
 
 const page = (jsonLd: unknown, extra = "") =>
   `<html><head><title>Advert</title><script type="application/ld+json">${JSON.stringify(jsonLd)}</script>${extra}</head><body></body></html>`;
@@ -65,6 +66,8 @@ describe("parseJobAdvert", () => {
     expect(parseJobAdvert(`<meta property="og:title" content="LinkedIn Login, Sign in"><meta name="description" content="Sign in to see jobs">`)).toBeNull();
     expect(parseJobAdvert(`<script type="application/ld+json">{not json</script>`)).toBeNull();
     expect(parseJobAdvert(page({ "@type": "Organization", name: "Reed" }))).toBeNull();
+    const listing = `<meta property="og:title" content="Ideaforge Careers and Jobs | Webbtree"><meta name="description" content="See all the open positions at Ideaforge. Apply to Ideaforge Jobs Now! Build a successful career in Ideaforge">`;
+    expect(parseJobAdvert(listing)).toBeNull();
   });
 });
 
@@ -84,6 +87,16 @@ describe("supported portals and safe addresses", () => {
     expect("error" in checkJobUrl("ftp://www.reed.co.uk/jobs/1")).toBe(true);
     expect("error" in checkJobUrl("https://user:pass@www.reed.co.uk/jobs/1")).toBe(true);
     expect("error" in checkJobUrl("https://www.reed.co.uk/jobs/analyst/123")).toBe(false);
+  });
+
+  it("accepts adverts on any public website, named after the site", () => {
+    const checked = checkJobUrl("https://app.webbtree.com/company/ideaforge/jobs/project-management-intern-effb09df");
+    expect("error" in checked ? checked.error : checked.portal.name).toBe("webbtree.com");
+    const careers = checkJobUrl("https://careers.example-company.co.uk/jobs/123");
+    expect("error" in careers ? careers.error : careers.portal.name).toBe("example-company.co.uk");
+    for (const bad of ["http://localhost/jobs", "http://127.0.0.1/x", "http://[::1]/x", "http://intranet/jobs", "http://printer.local/", "https://example.com:8443/jobs"]) {
+      expect("error" in checkJobUrl(bad)).toBe(true);
+    }
   });
 
   it("refuses internal network addresses", () => {
@@ -139,5 +152,18 @@ describe("portal page readers", () => {
       employmentType: "Permanent",
       method: "page-tags",
     });
+  });
+});
+
+describe("POST /api/read-job-advert", () => {
+  const post = (body: unknown, headers: Record<string, string> = {}) =>
+    POST(new Request("https://rootcause.example/api/read-job-advert", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }));
+
+  it("rejects missing links, private addresses and other websites' pages", async () => {
+    expect((await post({})).status).toBe(400);
+    const local = await post({ url: "http://127.0.0.1/admin" });
+    expect(local.status).toBe(400);
+    expect(((await local.json()) as { error: { message: string } }).error.message).toMatch(/public website/);
+    expect((await post({ url: "https://www.reed.co.uk/jobs/1" }, { origin: "https://elsewhere.example" })).status).toBe(400);
   });
 });

@@ -1,5 +1,4 @@
 import { initializeApp, type FirebaseOptions } from "firebase/app";
-import { connectFunctionsEmulator, getFunctions, type Functions } from "firebase/functions";
 import {
   connectFirestoreEmulator,
   getFirestore,
@@ -11,7 +10,7 @@ import {
 
 // All Firebase settings come from .env (see .env.example).
 // Accounts and all user data are Cloud Firestore documents (no Firebase Authentication).
-// One Cloud Function (functions/) reads job advert pages for "Import from job link".
+// Job advert links are read by a Vercel Function (api/read-job-advert.ts), not Firebase.
 const firebaseConfig: FirebaseOptions = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -45,26 +44,6 @@ function createDb(): Firestore | null {
 }
 
 export const db = createDb();
-
-function createFunctions(): Functions | null {
-  if (!app) return null;
-  const f = getFunctions(app, "europe-west2");
-  if (usingEmulators) {
-    try {
-      connectFunctionsEmulator(f, "127.0.0.1", port(import.meta.env.VITE_FUNCTIONS_EMULATOR_PORT, 5001));
-    } catch {
-      // Already connected (hot reload).
-    }
-  }
-  return f;
-}
-
-export const functions = createFunctions();
-
-export function requireFunctions(): Functions {
-  if (!functions) throw new Error("Firebase is not configured.");
-  return functions;
-}
 
 export function requireDb(): Firestore {
   if (!db) throw new Error("Firebase is not configured.");

@@ -5,11 +5,11 @@ import type { CauseClass, RoleFamily } from "@/data/types";
  * Every keyword list, weight and threshold lives here. Changing any of them
  * must bump ENGINE_VERSION so stored diagnoses stay traceable to their rules.
  */
-export const ENGINE_VERSION = "rules-1.0.1";
+export const ENGINE_VERSION = "rules-1.0.2";
 
 // ---------- Funnel ----------
 export const NO_RESPONSE_DAYS = 30;
-export const MIN_DECIDED_TO_RUN = 10;
+export const MIN_DECIDED_TO_RUN = 3;
 export const MIN_CV_BULLETS_TO_RUN = 3;
 export const SUFFICIENT_DECIDED = 20;
 export const SUFFICIENT_JD_SHARE = 0.7;

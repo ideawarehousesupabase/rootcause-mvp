@@ -135,8 +135,13 @@ describe("class fixtures", () => {
   });
 
   it("refuses to run with too little data", () => {
-    const apps = dates(6).map((date) => app({ dateApplied: date }));
-    expect(readiness({ profile: profile(), cvVersions: [quantifiedCv], applications: apps, today: TODAY }).canRun).toBe(false);
+    const apps = dates(3).map((date) => app({ dateApplied: date }));
+    expect(readiness({ profile: profile(), cvVersions: [quantifiedCv], applications: apps.slice(0, 2), today: TODAY }).canRun).toBe(false);
+    expect(readiness({ profile: profile(), cvVersions: [quantifiedCv], applications: apps, today: TODAY }).canRun).toBe(true);
+    // Three decided applications are enough to run, with confidence reduced for the small sample.
+    const r = runDiagnosis({ profile: profile(), cvVersions: [quantifiedCv], applications: apps, today: TODAY });
+    expect(r.sufficiency).toBe("limited");
+    expect(Object.values(r.classes).every((c) => c.confidence <= 0.95)).toBe(true);
   });
 
   it("reports no dominant cause when signals are weak", () => {
